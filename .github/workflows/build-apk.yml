@@ -1,0 +1,69 @@
+name: Build Transactor V2.5 Money Flow APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Transactor_Android_V2_5_MONEY_FLOW.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract Transactor V2.5
+        run: |
+          rm -rf extracted
+          mkdir -p extracted
+          unzip -q Transactor_Android_V2_5_MONEY_FLOW.zip -d extracted
+
+          echo "=== V2.5 PROJECT CONTENT ==="
+          find extracted -maxdepth 3 -type f | sort | head -100
+
+      - name: Verify V2.5 project
+        run: |
+          test -f extracted/Transactor_Android_V2_5_MONEY_FLOW/settings.gradle.kts
+          test -f extracted/Transactor_Android_V2_5_MONEY_FLOW/build.gradle.kts
+          test -f extracted/Transactor_Android_V2_5_MONEY_FLOW/app/build.gradle.kts
+
+          echo "Transactor V2.5 project structure verified"
+
+      - name: Build Transactor V2.5 APK
+        working-directory: extracted/Transactor_Android_V2_5_MONEY_FLOW
+        run: |
+          gradle clean assembleDebug --stacktrace
+
+      - name: Verify APK generated
+        run: |
+          APK="extracted/Transactor_Android_V2_5_MONEY_FLOW/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: APK was not generated"
+            exit 1
+          fi
+
+          echo "Transactor V2.5 Money Flow APK successfully generated"
+          ls -lh "$APK"
+
+      - name: Upload Transactor V2.5 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transactor-V2-5-Money-Flow-APK
+          path: extracted/Transactor_Android_V2_5_MONEY_FLOW/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
