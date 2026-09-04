@@ -1,10 +1,10 @@
-name: Build Transactor V2.7 Urdu Classic APK
+name: Build Transactor V2.9 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Transactor_Android_V2_7_URDU_CLASSIC.zip'
+      - 'Transactor_Android_V2_9_EARNING_EDIT_DELETE.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,44 +26,45 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract Transactor V2.7
+      - name: Extract Transactor V2.9
         run: |
           rm -rf extracted
           mkdir -p extracted
-          unzip -q Transactor_Android_V2_7_URDU_CLASSIC.zip -d extracted
 
-          echo "=== EXTRACTED CONTENT ==="
+          unzip -q Transactor_Android_V2_9_EARNING_EDIT_DELETE.zip -d extracted
+
+          echo "=== EXTRACTED PROJECT ==="
           find extracted -maxdepth 3 -type f | sort | head -100
 
-      - name: Verify V2.7 project
+      - name: Verify V2.9 project
         run: |
-          test -f extracted/Transactor_Android_V2_7_URDU_CLASSIC/settings.gradle.kts
-          test -f extracted/Transactor_Android_V2_7_URDU_CLASSIC/build.gradle.kts
-          test -f extracted/Transactor_Android_V2_7_URDU_CLASSIC/app/build.gradle.kts
+          test -f extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/settings.gradle.kts
+          test -f extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/build.gradle.kts
+          test -f extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/app/build.gradle.kts
 
-          echo "Transactor V2.7 project verified"
+          echo "Transactor V2.9 project verified"
 
-      - name: Build Transactor V2.7 APK
-        working-directory: extracted/Transactor_Android_V2_7_URDU_CLASSIC
+      - name: Build Transactor V2.9 APK
+        working-directory: extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE
         run: |
           gradle clean assembleDebug --stacktrace
 
-      - name: Verify APK
+      - name: Verify APK generated
         run: |
-          APK="extracted/Transactor_Android_V2_7_URDU_CLASSIC/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
             echo "ERROR: APK was not generated"
             exit 1
           fi
 
-          echo "Transactor V2.7 APK successfully generated"
+          echo "Transactor V2.9 APK successfully generated"
           ls -lh "$APK"
 
-      - name: Upload APK
+      - name: Upload Transactor V2.9 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Transactor-V2-7-Urdu-Classic-APK
-          path: extracted/Transactor_Android_V2_7_URDU_CLASSIC/app/build/outputs/apk/debug/app-debug.apk
+          name: Transactor-V2-9-Earning-Edit-Delete-APK
+          path: extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
