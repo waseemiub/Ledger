@@ -1,10 +1,10 @@
-name: Build NedEx Offline Ledger V1.0
+name: Build NedEx Offline Ledger V1.1
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'NedEx_Offline_Ledger_V1_0.zip'
+      - 'NedEx_Offline_Ledger_V1_1_JVM17_FIXED.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -14,14 +14,14 @@ jobs:
     steps:
 
       # ==========================================
-      # 1. CHECKOUT
+      # CHECKOUT
       # ==========================================
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
       # ==========================================
-      # 2. JAVA 17
+      # JAVA 17
       # ==========================================
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -31,7 +31,7 @@ jobs:
 
 
       # ==========================================
-      # 3. GRADLE 8.9
+      # GRADLE 8.9
       # ==========================================
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -40,35 +40,35 @@ jobs:
 
 
       # ==========================================
-      # 4. VERIFY ZIP
+      # VERIFY ZIP
       # ==========================================
-      - name: Verify NedEx package
+      - name: Verify NedEx V1.1 package
         shell: bash
         run: |
           set -e
 
-          ZIP="NedEx_Offline_Ledger_V1_0.zip"
+          ZIP="NedEx_Offline_Ledger_V1_1_JVM17_FIXED.zip"
 
           echo "========================================"
-          echo "NEDEX OFFLINE LEDGER V1.0"
-          echo "PACKAGE CHECK"
+          echo "NEDEX OFFLINE LEDGER V1.1"
+          echo "JVM 17 FIXED PACKAGE"
           echo "========================================"
-
           echo ""
+
           echo "Repository contents:"
           ls -lah
 
+          echo ""
+
           if [ ! -f "$ZIP" ]; then
-            echo ""
             echo "ERROR:"
             echo "$ZIP was not found."
             echo ""
             echo "Required exact filename:"
-            echo "NedEx_Offline_Ledger_V1_0.zip"
+            echo "NedEx_Offline_Ledger_V1_1_JVM17_FIXED.zip"
             exit 1
           fi
 
-          echo ""
           echo "ZIP FOUND:"
           ls -lh "$ZIP"
 
@@ -77,13 +77,13 @@ jobs:
           unzip -t "$ZIP"
 
           echo ""
-          echo "ZIP integrity passed."
+          echo "ZIP integrity check passed."
 
 
       # ==========================================
-      # 5. EXTRACT ZIP
+      # EXTRACT
       # ==========================================
-      - name: Extract NedEx
+      - name: Extract NedEx V1.1
         shell: bash
         run: |
           set -e
@@ -92,12 +92,12 @@ jobs:
           mkdir -p extracted
 
           unzip -q \
-            NedEx_Offline_Ledger_V1_0.zip \
+            NedEx_Offline_Ledger_V1_1_JVM17_FIXED.zip \
             -d extracted
 
           echo ""
           echo "========================================"
-          echo "EXTRACTED CONTENT"
+          echo "EXTRACTED PACKAGE"
           echo "========================================"
 
           find extracted \
@@ -108,14 +108,14 @@ jobs:
 
 
       # ==========================================
-      # 6. DETECT PROJECT ROOT
+      # DETECT PROJECT ROOT
       # ==========================================
       - name: Detect Android project root
         shell: bash
         run: |
           set -e
 
-          EXPECTED="extracted/NedEx_Offline_Ledger_V1_0"
+          EXPECTED="extracted/NedEx_Offline_Ledger_V1_1_JVM17_FIXED"
 
           echo ""
           echo "========================================"
@@ -151,27 +151,18 @@ jobs:
               | head -1 || true)
 
             if [ -n "$SETTINGS_KTS" ]; then
-
               ROOT=$(dirname "$SETTINGS_KTS")
 
             elif [ -n "$SETTINGS_GRADLE" ]; then
-
               ROOT=$(dirname "$SETTINGS_GRADLE")
 
             else
-
               echo ""
               echo "ERROR:"
-              echo "Android Gradle project could not be found."
+              echo "Could not locate Android project."
               echo ""
-              echo "Extracted folders:"
-              find extracted \
-                -maxdepth 5 \
-                -type d \
-                | sort
-
+              find extracted -maxdepth 5 -type d | sort
               exit 1
-
             fi
 
           fi
@@ -184,7 +175,7 @@ jobs:
 
 
       # ==========================================
-      # 7. VERIFY PROJECT STRUCTURE
+      # VERIFY PROJECT
       # ==========================================
       - name: Verify Android project
         shell: bash
@@ -193,12 +184,11 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "PROJECT STRUCTURE CHECK"
+          echo "ANDROID PROJECT CHECK"
           echo "========================================"
 
           echo "Project root:"
           echo "$PROJECT_ROOT"
-
           echo ""
 
           if [ -f "$PROJECT_ROOT/settings.gradle.kts" ]; then
@@ -206,7 +196,7 @@ jobs:
           elif [ -f "$PROJECT_ROOT/settings.gradle" ]; then
             echo "settings.gradle FOUND"
           else
-            echo "ERROR: Gradle settings file missing."
+            echo "ERROR: Settings file missing."
             exit 1
           fi
 
@@ -215,7 +205,7 @@ jobs:
           elif [ -f "$PROJECT_ROOT/build.gradle" ]; then
             echo "build.gradle FOUND"
           else
-            echo "ERROR: Root Gradle build file missing."
+            echo "ERROR: Root build file missing."
             exit 1
           fi
 
@@ -224,18 +214,18 @@ jobs:
           elif [ -f "$PROJECT_ROOT/app/build.gradle" ]; then
             echo "app/build.gradle FOUND"
           else
-            echo "ERROR: App Gradle build file missing."
+            echo "ERROR: App build file missing."
             exit 1
           fi
 
           echo ""
-          echo "Android project structure verified."
+          echo "Android project verified."
 
 
       # ==========================================
-      # 8. VERIFY VERSION
+      # VERIFY VERSION
       # ==========================================
-      - name: Verify NedEx version
+      - name: Verify NedEx V1.1
         shell: bash
         run: |
           set -e
@@ -252,24 +242,24 @@ jobs:
           echo "========================================"
 
           grep -Eq \
-            'versionCode[[:space:]]*=?[[:space:]]*1' \
+            'versionCode[[:space:]]*=?[[:space:]]*2' \
             "$FILE"
 
           grep -Eq \
-            'versionName[[:space:]]*=?[[:space:]]*["'\'']1\.0["'\'']' \
+            'versionName[[:space:]]*=?[[:space:]]*["'\'']1\.1["'\'']' \
             "$FILE"
 
-          echo "versionCode = 1"
-          echo "versionName = 1.0"
+          echo "versionCode = 2"
+          echo "versionName = 1.1"
 
           echo ""
-          echo "Version verified."
+          echo "V1.1 verified."
 
 
       # ==========================================
-      # 9. VERIFY APPLICATION ID
+      # VERIFY APPLICATION ID
       # ==========================================
-      - name: Verify NedEx application ID
+      - name: Verify application ID
         shell: bash
         run: |
           set -e
@@ -282,22 +272,50 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "APPLICATION ID CHECK"
+          echo "APPLICATION ID"
           echo "========================================"
 
           grep -Eq \
             'applicationId[[:space:]]*=?[[:space:]]*["'\'']ae\.nedex\.simpleledger["'\'']' \
             "$FILE"
 
-          echo "Application ID:"
           echo "ae.nedex.simpleledger"
-
           echo ""
-          echo "Independent NedEx package verified."
+          echo "Application ID verified."
 
 
       # ==========================================
-      # 10. GRADLE INFORMATION
+      # VERIFY JVM 17 FIX
+      # ==========================================
+      - name: Verify JVM 17 configuration
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/build.gradle.kts"
+
+          echo ""
+          echo "========================================"
+          echo "JVM 17 CONFIGURATION CHECK"
+          echo "========================================"
+
+          if [ ! -f "$FILE" ]; then
+            echo "ERROR:"
+            echo "Expected Kotlin Gradle file not found."
+            exit 1
+          fi
+
+          grep -q 'JavaVersion.VERSION_17' "$FILE"
+          grep -q 'jvmTarget = "17"' "$FILE"
+
+          echo "Java target  = JVM 17"
+          echo "Kotlin target = JVM 17"
+          echo ""
+          echo "JVM targets match."
+
+
+      # ==========================================
+      # GRADLE INFO
       # ==========================================
       - name: Show Gradle information
         working-directory: ${{ env.PROJECT_ROOT }}
@@ -312,9 +330,9 @@ jobs:
 
 
       # ==========================================
-      # 11. CLEAN
+      # CLEAN
       # ==========================================
-      - name: Clean project
+      - name: Clean NedEx
         working-directory: ${{ env.PROJECT_ROOT }}
         shell: bash
         run: |
@@ -322,16 +340,16 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "CLEANING NEDEX PROJECT"
+          echo "CLEANING NEDEX V1.1"
           echo "========================================"
 
           gradle clean --stacktrace
 
 
       # ==========================================
-      # 12. BUILD APK
+      # BUILD
       # ==========================================
-      - name: Build NedEx APK
+      - name: Build NedEx V1.1 APK
         working-directory: ${{ env.PROJECT_ROOT }}
         shell: bash
         run: |
@@ -339,16 +357,17 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "BUILDING NEDEX OFFLINE LEDGER V1.0"
+          echo "BUILDING NEDEX V1.1"
+          echo "JAVA 17 + KOTLIN JVM 17"
           echo "========================================"
 
           gradle assembleDebug --stacktrace
 
 
       # ==========================================
-      # 13. FIND APK
+      # LOCATE APK
       # ==========================================
-      - name: Find generated APK
+      - name: Locate generated APK
         shell: bash
         run: |
           set -e
@@ -386,8 +405,7 @@ jobs:
             echo "APK was not generated."
 
             echo ""
-            echo "Available build files:"
-
+            echo "Build output:"
             find "$PROJECT_ROOT/app/build" \
               -maxdepth 7 \
               -type f \
@@ -395,7 +413,6 @@ jobs:
               | tail -250 || true
 
             exit 1
-
           fi
 
           echo ""
@@ -408,43 +425,41 @@ jobs:
 
 
       # ==========================================
-      # 14. PREPARE FINAL APK
+      # PREPARE FINAL APK
       # ==========================================
       - name: Prepare final NedEx APK
         shell: bash
         run: |
           set -e
 
-          echo ""
-          echo "========================================"
-          echo "PREPARING FINAL APK"
-          echo "========================================"
-
           rm -rf release
           mkdir -p release
 
           cp \
             "$APK_PATH" \
-            "release/NedEx-Offline-Ledger-V1.0.apk"
+            "release/NedEx-Offline-Ledger-V1.1.apk"
 
           echo ""
-          echo "FINAL APK:"
+          echo "========================================"
+          echo "FINAL APK"
+          echo "========================================"
+
           ls -lh \
-            "release/NedEx-Offline-Ledger-V1.0.apk"
+            "release/NedEx-Offline-Ledger-V1.1.apk"
 
           echo ""
           echo "========================================"
-          echo "NEDEX V1.0 BUILD SUCCESSFUL"
+          echo "NEDEX V1.1 BUILD SUCCESSFUL"
           echo "========================================"
 
 
       # ==========================================
-      # 15. UPLOAD APK ARTIFACT
+      # UPLOAD APK
       # ==========================================
-      - name: Upload NedEx APK
+      - name: Upload NedEx V1.1 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NedEx-Offline-Ledger-V1-0-APK
-          path: release/NedEx-Offline-Ledger-V1.0.apk
+          name: NedEx-Offline-Ledger-V1-1-APK
+          path: release/NedEx-Offline-Ledger-V1.1.apk
           if-no-files-found: error
           retention-days: 30
