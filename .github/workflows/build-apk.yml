@@ -1,10 +1,10 @@
-name: Build Transactor V2.9 APK
+name: Build NadEx V3.1 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Transactor_Android_V2_9_EARNING_EDIT_DELETE.zip'
+      - 'Transactor_Android_V3_1_NADEX_FUTURE.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,45 +26,45 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract Transactor V2.9
+      - name: Extract NadEx V3.1
         run: |
           rm -rf extracted
           mkdir -p extracted
 
-          unzip -q Transactor_Android_V2_9_EARNING_EDIT_DELETE.zip -d extracted
+          unzip -q Transactor_Android_V3_1_NADEX_FUTURE.zip -d extracted
 
-          echo "=== EXTRACTED PROJECT ==="
+          echo "=== EXTRACTED CONTENT ==="
           find extracted -maxdepth 3 -type f | sort | head -100
 
-      - name: Verify V2.9 project
+      - name: Verify NadEx project
         run: |
-          test -f extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/settings.gradle.kts
-          test -f extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/build.gradle.kts
-          test -f extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/app/build.gradle.kts
+          test -f extracted/Transactor_Android_V3_1_NADEX_FUTURE/settings.gradle.kts
+          test -f extracted/Transactor_Android_V3_1_NADEX_FUTURE/build.gradle.kts
+          test -f extracted/Transactor_Android_V3_1_NADEX_FUTURE/app/build.gradle.kts
 
-          echo "Transactor V2.9 project verified"
+          echo "NadEx V3.1 project verified"
 
-      - name: Build Transactor V2.9 APK
-        working-directory: extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE
+      - name: Build NadEx V3.1 APK
+        working-directory: extracted/Transactor_Android_V3_1_NADEX_FUTURE
         run: |
           gradle clean assembleDebug --stacktrace
 
       - name: Verify APK generated
         run: |
-          APK="extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/Transactor_Android_V3_1_NADEX_FUTURE/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
             echo "ERROR: APK was not generated"
             exit 1
           fi
 
-          echo "Transactor V2.9 APK successfully generated"
+          echo "NadEx V3.1 APK successfully generated"
           ls -lh "$APK"
 
-      - name: Upload Transactor V2.9 APK
+      - name: Upload NadEx V3.1 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Transactor-V2-9-Earning-Edit-Delete-APK
-          path: extracted/Transactor_Android_V2_9_EARNING_EDIT_DELETE/app/build/outputs/apk/debug/app-debug.apk
+          name: NadEx-V3-1-Future-APK
+          path: extracted/Transactor_Android_V3_1_NADEX_FUTURE/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
