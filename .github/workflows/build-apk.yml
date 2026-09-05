@@ -1,14 +1,14 @@
-name: Build NadEx Android APK
+name: Build NadEx APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+      - master
 
 jobs:
   build:
-    name: Build NadEx APK
     runs-on: ubuntu-latest
 
     steps:
@@ -26,46 +26,76 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Show repository files
+        shell: bash
+        run: |
+          echo "Repository contents:"
+          find . -maxdepth 4 -type f | sort | head -300
+
       - name: Find Android project
         id: project
         shell: bash
         run: |
-          if [ -f "settings.gradle.kts" ]; then
-            echo "dir=." >> "$GITHUB_OUTPUT"
-          elif [ -f "NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/settings.gradle.kts" ]; then
-            echo "dir=NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY" >> "$GITHUB_OUTPUT"
-          else
-            PROJECT_DIR=$(find . -name "settings.gradle.kts" -printf '%h\n' | head -n 1)
-            if [ -z "$PROJECT_DIR" ]; then
-              echo "ERROR: Android project not found."
-              exit 1
-            fi
-            echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+          SETTINGS=$(find . -type f \( \
+            -name "settings.gradle" -o \
+            -name "settings.gradle.kts" \
+          \) | head -n 1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: settings.gradle or settings.gradle.kts not found."
+            echo ""
+            echo "Repository folders:"
+            find . -maxdepth 4 -type d | sort
+            exit 1
           fi
 
+          PROJECT_DIR=$(dirname "$SETTINGS")
+
+          echo "Android project found:"
+          echo "$PROJECT_DIR"
+
+          echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+
       - name: Build Debug APK
-        working-directory: ${{ steps.project.outputs.dir }}
+        shell: bash
         run: |
-          gradle clean assembleDebug --stacktrace
+          cd "${{ steps.project.outputs.dir }}"
+
+          echo "Building from:"
+          pwd
+
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew clean assembleDebug --stacktrace
+          else
+            gradle clean assembleDebug --stacktrace
+          fi
 
       - name: Locate APK
         id: apk
         shell: bash
         run: |
-          APK=$(find "${{ steps.project.outputs.dir }}" -path "*/build/outputs/apk/debug/*.apk" | head -n 1)
+          APK=$(find "${{ steps.project.outputs.dir }}" \
+            -type f \
+            -path "*/build/outputs/apk/debug/*.apk" \
+            | head -n 1)
 
           if [ -z "$APK" ]; then
-            echo "ERROR: APK was not generated."
+            echo "ERROR: Build finished but APK could not be located."
+            find "${{ steps.project.outputs.dir }}" -type f -name "*.apk"
             exit 1
           fi
 
-          echo "path=$APK" >> "$GITHUB_OUTPUT"
-          echo "APK generated at: $APK"
+          echo "APK FOUND:"
+          echo "$APK"
+
+          mkdir -p output
+          cp "$APK" "output/NadEx-V4.2.apk"
 
       - name: Upload NadEx APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V4-2-UI-Corrected-APK
-          path: ${{ steps.apk.outputs.path }}
+          name: NadEx-V4.2-APK
+          path: output/NadEx-V4.2.apk
           if-no-files-found: error
           retention-days: 30
