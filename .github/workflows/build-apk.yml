@@ -1,14 +1,14 @@
-name: Build NadEx V4.1 APK
+name: Build NadEx Android APK
 
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY.zip'
-      - '.github/workflows/build-apk.yml'
+    branches:
+      - main
 
 jobs:
   build:
+    name: Build NadEx APK
     runs-on: ubuntu-latest
 
     steps:
@@ -21,98 +21,51 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle 8.9
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Verify V4.1 ZIP exists
+      - name: Find Android project
+        id: project
+        shell: bash
         run: |
-          echo "=== REPOSITORY ROOT ==="
-          ls -lah
-
-          ZIP="NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY.zip"
-
-          if [ ! -f "$ZIP" ]; then
-            echo "ERROR: $ZIP is missing from the repository root."
-            echo "Upload the exact V4.1 ZIP file before running this workflow."
-            exit 1
+          if [ -f "settings.gradle.kts" ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          elif [ -f "NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/settings.gradle.kts" ]; then
+            echo "dir=NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY" >> "$GITHUB_OUTPUT"
+          else
+            PROJECT_DIR=$(find . -name "settings.gradle.kts" -printf '%h\n' | head -n 1)
+            if [ -z "$PROJECT_DIR" ]; then
+              echo "ERROR: Android project not found."
+              exit 1
+            fi
+            echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "NadEx V4.1 ZIP found."
-          unzip -t "$ZIP"
-
-      - name: Extract NadEx V4.1
-        run: |
-          rm -rf extracted
-          mkdir -p extracted
-
-          unzip -q NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY.zip -d extracted
-
-          echo "=== EXTRACTED PROJECT ==="
-          find extracted -maxdepth 3 -type f | sort | head -120
-
-      - name: Verify project structure
-        run: |
-          ROOT="extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY"
-
-          test -f "$ROOT/settings.gradle.kts"
-          test -f "$ROOT/build.gradle.kts"
-          test -f "$ROOT/app/build.gradle.kts"
-
-          echo "NadEx V4.1 Android project structure verified."
-
-      - name: Verify version
-        run: |
-          FILE="extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/app/build.gradle.kts"
-
-          grep -q 'versionCode = 41' "$FILE"
-          grep -q 'versionName = "4.1"' "$FILE"
-
-          echo "Confirmed versionCode 41 / versionName 4.1"
-
-      - name: Verify NadEx package
-        run: |
-          FILE="extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/app/build.gradle.kts"
-
-          grep -q 'applicationId = "ae.transactor.app"' "$FILE"
-
-          echo "Confirmed NadEx application package."
-
-      - name: Build NadEx V4.1 APK
-        working-directory: extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY
+      - name: Build Debug APK
+        working-directory: ${{ steps.project.outputs.dir }}
         run: |
           gradle clean assembleDebug --stacktrace
 
-      - name: Verify generated APK
+      - name: Locate APK
+        id: apk
+        shell: bash
         run: |
-          APK="extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/app/build/outputs/apk/debug/app-debug.apk"
+          APK=$(find "${{ steps.project.outputs.dir }}" -path "*/build/outputs/apk/debug/*.apk" | head -n 1)
 
-          if [ ! -f "$APK" ]; then
-            echo "ERROR: NadEx V4.1 APK was not generated."
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK was not generated."
             exit 1
           fi
 
-          echo "========================================"
-          echo "NadEx V4.1 APK BUILD SUCCESSFUL"
-          echo "========================================"
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "APK generated at: $APK"
 
-          ls -lh "$APK"
-
-      - name: Prepare NadEx APK
-        run: |
-          mkdir -p release
-
-          cp \
-          extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/app/build/outputs/apk/debug/app-debug.apk \
-          release/NadEx-V4.1-Executive-MultiCurrency.apk
-
-          ls -lh release/
-
-      - name: Upload NadEx V4.1 APK
+      - name: Upload NadEx APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V4-1-Executive-MultiCurrency-APK
-          path: release/NadEx-V4.1-Executive-MultiCurrency.apk
+          name: NadEx-V4-2-UI-Corrected-APK
+          path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 30
