@@ -1,10 +1,10 @@
-name: Build NadEx V3.2 APK
+name: Build ZaibEx V3.3 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Transactor_Android_V3_2_NADEX_USABILITY_FIX.zip'
+      - 'ZaibEx_Android_V3_3_PERSONAL_LEDGER.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,45 +26,45 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract NadEx V3.2
+      - name: Extract ZaibEx V3.3
         run: |
           rm -rf extracted
           mkdir -p extracted
 
-          unzip -q Transactor_Android_V3_2_NADEX_USABILITY_FIX.zip -d extracted
+          unzip -q ZaibEx_Android_V3_3_PERSONAL_LEDGER.zip -d extracted
 
           echo "=== EXTRACTED CONTENT ==="
           find extracted -maxdepth 3 -type f | sort | head -100
 
-      - name: Verify NadEx V3.2 project
+      - name: Verify ZaibEx project
         run: |
-          test -f extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/settings.gradle.kts
-          test -f extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/build.gradle.kts
-          test -f extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/app/build.gradle.kts
+          test -f extracted/ZaibEx_Android_V3_3_PERSONAL_LEDGER/settings.gradle.kts
+          test -f extracted/ZaibEx_Android_V3_3_PERSONAL_LEDGER/build.gradle.kts
+          test -f extracted/ZaibEx_Android_V3_3_PERSONAL_LEDGER/app/build.gradle.kts
 
-          echo "NadEx V3.2 project verified successfully"
+          echo "ZaibEx V3.3 project verified"
 
-      - name: Build NadEx V3.2 APK
-        working-directory: extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX
+      - name: Build ZaibEx V3.3 APK
+        working-directory: extracted/ZaibEx_Android_V3_3_PERSONAL_LEDGER
         run: |
           gradle clean assembleDebug --stacktrace
 
       - name: Verify APK generated
         run: |
-          APK="extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/ZaibEx_Android_V3_3_PERSONAL_LEDGER/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
             echo "ERROR: APK was not generated"
             exit 1
           fi
 
-          echo "NadEx V3.2 APK successfully generated"
+          echo "ZaibEx V3.3 APK successfully generated"
           ls -lh "$APK"
 
-      - name: Upload NadEx V3.2 APK
+      - name: Upload ZaibEx APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V3-2-Usability-Fix-APK
-          path: extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/app/build/outputs/apk/debug/app-debug.apk
+          name: ZaibEx-V3-3-Personal-Ledger-APK
+          path: extracted/ZaibEx_Android_V3_3_PERSONAL_LEDGER/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
