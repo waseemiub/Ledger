@@ -1,10 +1,10 @@
-name: Build NadEx V3.3 APK
+name: Build NadEx V3.4 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'NadEx_Android_V3_3_READABILITY_FIX.zip'
+      - 'NadEx_Android_V3_4_BALANCE_MOVEMENT.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,45 +26,45 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract NadEx V3.3
+      - name: Extract NadEx V3.4
         run: |
           rm -rf extracted
           mkdir -p extracted
 
-          unzip -q NadEx_Android_V3_3_READABILITY_FIX.zip -d extracted
+          unzip -q NadEx_Android_V3_4_BALANCE_MOVEMENT.zip -d extracted
 
-          echo "=== NADEX V3.3 EXTRACTED CONTENT ==="
+          echo "=== NADEX V3.4 EXTRACTED CONTENT ==="
           find extracted -maxdepth 3 -type f | sort | head -100
 
-      - name: Verify NadEx V3.3 Project
+      - name: Verify NadEx V3.4 project
         run: |
-          test -f extracted/NadEx_Android_V3_3_READABILITY_FIX/settings.gradle.kts
-          test -f extracted/NadEx_Android_V3_3_READABILITY_FIX/build.gradle.kts
-          test -f extracted/NadEx_Android_V3_3_READABILITY_FIX/app/build.gradle.kts
+          test -f extracted/NadEx_Android_V3_4_BALANCE_MOVEMENT/settings.gradle.kts
+          test -f extracted/NadEx_Android_V3_4_BALANCE_MOVEMENT/build.gradle.kts
+          test -f extracted/NadEx_Android_V3_4_BALANCE_MOVEMENT/app/build.gradle.kts
 
-          echo "NadEx V3.3 project verified successfully"
+          echo "NadEx V3.4 project verified successfully"
 
-      - name: Build NadEx V3.3 APK
-        working-directory: extracted/NadEx_Android_V3_3_READABILITY_FIX
+      - name: Build NadEx V3.4 APK
+        working-directory: extracted/NadEx_Android_V3_4_BALANCE_MOVEMENT
         run: |
           gradle clean assembleDebug --stacktrace
 
-      - name: Verify APK Generated
+      - name: Verify APK generated
         run: |
-          APK="extracted/NadEx_Android_V3_3_READABILITY_FIX/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/NadEx_Android_V3_4_BALANCE_MOVEMENT/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo "ERROR: NadEx APK was not generated"
+            echo "ERROR: NadEx V3.4 APK was not generated"
             exit 1
           fi
 
-          echo "NadEx V3.3 APK successfully generated"
+          echo "NadEx V3.4 APK successfully generated"
           ls -lh "$APK"
 
-      - name: Upload NadEx V3.3 APK
+      - name: Upload NadEx V3.4 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V3-3-Readability-Fix-APK
-          path: extracted/NadEx_Android_V3_3_READABILITY_FIX/app/build/outputs/apk/debug/app-debug.apk
+          name: NadEx-V3-4-Balance-Movement-APK
+          path: extracted/NadEx_Android_V3_4_BALANCE_MOVEMENT/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
