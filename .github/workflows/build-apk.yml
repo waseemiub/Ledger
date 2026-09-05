@@ -1,10 +1,10 @@
-name: Build NadEx V3.8 APK
+name: Build NadEx V3.9 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'NadEx_Android_V3_8_HOME_NAV_FOLDS.zip'
+      - 'NadEx_Android_V3_9_UI_POLISH.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,45 +26,55 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract NadEx V3.8
+      - name: Extract NadEx V3.9
         run: |
           rm -rf extracted
           mkdir -p extracted
 
-          unzip -q NadEx_Android_V3_8_HOME_NAV_FOLDS.zip -d extracted
+          unzip -q NadEx_Android_V3_9_UI_POLISH.zip -d extracted
 
-          echo "=== NADEX V3.8 EXTRACTED CONTENT ==="
+          echo "=== NADEX V3.9 EXTRACTED CONTENT ==="
           find extracted -maxdepth 3 -type f | sort | head -100
 
-      - name: Verify NadEx V3.8 project
+      - name: Verify NadEx V3.9 project
         run: |
-          test -f extracted/NadEx_Android_V3_8_HOME_NAV_FOLDS/settings.gradle.kts
-          test -f extracted/NadEx_Android_V3_8_HOME_NAV_FOLDS/build.gradle.kts
-          test -f extracted/NadEx_Android_V3_8_HOME_NAV_FOLDS/app/build.gradle.kts
+          test -f extracted/NadEx_Android_V3_9_UI_POLISH/settings.gradle.kts
+          test -f extracted/NadEx_Android_V3_9_UI_POLISH/build.gradle.kts
+          test -f extracted/NadEx_Android_V3_9_UI_POLISH/app/build.gradle.kts
 
-          echo "NadEx V3.8 project verified successfully"
+          echo "NadEx V3.9 project verified successfully"
 
-      - name: Build NadEx V3.8 APK
-        working-directory: extracted/NadEx_Android_V3_8_HOME_NAV_FOLDS
+      - name: Verify NadEx version
+        run: |
+          grep -q 'versionCode = 39' \
+          extracted/NadEx_Android_V3_9_UI_POLISH/app/build.gradle.kts
+
+          grep -q 'versionName = "3.9"' \
+          extracted/NadEx_Android_V3_9_UI_POLISH/app/build.gradle.kts
+
+          echo "Confirmed NadEx V3.9"
+
+      - name: Build NadEx V3.9 APK
+        working-directory: extracted/NadEx_Android_V3_9_UI_POLISH
         run: |
           gradle clean assembleDebug --stacktrace
 
       - name: Verify APK generated
         run: |
-          APK="extracted/NadEx_Android_V3_8_HOME_NAV_FOLDS/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/NadEx_Android_V3_9_UI_POLISH/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo "ERROR: NadEx V3.8 APK was not generated"
+            echo "ERROR: NadEx V3.9 APK was not generated"
             exit 1
           fi
 
-          echo "NadEx V3.8 APK successfully generated"
+          echo "NadEx V3.9 APK successfully generated"
           ls -lh "$APK"
 
-      - name: Upload NadEx V3.8 APK
+      - name: Upload NadEx V3.9 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V3-8-Home-Navigation-Folds-APK
-          path: extracted/NadEx_Android_V3_8_HOME_NAV_FOLDS/app/build/outputs/apk/debug/app-debug.apk
+          name: NadEx-V3-9-UI-Polish-APK
+          path: extracted/NadEx_Android_V3_9_UI_POLISH/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
