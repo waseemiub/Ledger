@@ -1,10 +1,10 @@
-name: Build NadEx V3.1 APK
+name: Build NadEx V3.2 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Transactor_Android_V3_1_NADEX_FUTURE.zip'
+      - 'Transactor_Android_V3_2_NADEX_USABILITY_FIX.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,45 +26,45 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract NadEx V3.1
+      - name: Extract NadEx V3.2
         run: |
           rm -rf extracted
           mkdir -p extracted
 
-          unzip -q Transactor_Android_V3_1_NADEX_FUTURE.zip -d extracted
+          unzip -q Transactor_Android_V3_2_NADEX_USABILITY_FIX.zip -d extracted
 
           echo "=== EXTRACTED CONTENT ==="
           find extracted -maxdepth 3 -type f | sort | head -100
 
-      - name: Verify NadEx project
+      - name: Verify NadEx V3.2 project
         run: |
-          test -f extracted/Transactor_Android_V3_1_NADEX_FUTURE/settings.gradle.kts
-          test -f extracted/Transactor_Android_V3_1_NADEX_FUTURE/build.gradle.kts
-          test -f extracted/Transactor_Android_V3_1_NADEX_FUTURE/app/build.gradle.kts
+          test -f extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/settings.gradle.kts
+          test -f extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/build.gradle.kts
+          test -f extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/app/build.gradle.kts
 
-          echo "NadEx V3.1 project verified"
+          echo "NadEx V3.2 project verified successfully"
 
-      - name: Build NadEx V3.1 APK
-        working-directory: extracted/Transactor_Android_V3_1_NADEX_FUTURE
+      - name: Build NadEx V3.2 APK
+        working-directory: extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX
         run: |
           gradle clean assembleDebug --stacktrace
 
       - name: Verify APK generated
         run: |
-          APK="extracted/Transactor_Android_V3_1_NADEX_FUTURE/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
             echo "ERROR: APK was not generated"
             exit 1
           fi
 
-          echo "NadEx V3.1 APK successfully generated"
+          echo "NadEx V3.2 APK successfully generated"
           ls -lh "$APK"
 
-      - name: Upload NadEx V3.1 APK
+      - name: Upload NadEx V3.2 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V3-1-Future-APK
-          path: extracted/Transactor_Android_V3_1_NADEX_FUTURE/app/build/outputs/apk/debug/app-debug.apk
+          name: NadEx-V3-2-Usability-Fix-APK
+          path: extracted/Transactor_Android_V3_2_NADEX_USABILITY_FIX/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
