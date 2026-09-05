@@ -1,10 +1,10 @@
-name: Build NadEx V4.7 Futuristic Neon Glass
+name: Build NadEx V5.0 Modern Banking UI
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'NadEx_Android_V4_7_FUTURISTIC_NEON_GLASS.zip'
+      - 'NadEx_Android_V5_0_MODERN_BANKING_UI.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -36,18 +36,18 @@ jobs:
           gradle-version: '8.9'
 
       # ==========================================
-      # 4. VERIFY ZIP EXISTS
+      # 4. VERIFY ZIP
       # ==========================================
-      - name: Verify NadEx V4.7 ZIP
+      - name: Verify NadEx V5.0 ZIP
         run: |
-          ZIP="NadEx_Android_V4_7_FUTURISTIC_NEON_GLASS.zip"
+          ZIP="NadEx_Android_V5_0_MODERN_BANKING_UI.zip"
 
           echo "========================================"
-          echo "NADEX V4.7 PACKAGE CHECK"
+          echo "CHECKING NADEX V5.0 PACKAGE"
           echo "========================================"
 
           echo ""
-          echo "Repository root files:"
+          echo "Repository root:"
           ls -lah
 
           if [ ! -f "$ZIP" ]; then
@@ -55,7 +55,7 @@ jobs:
             echo "ERROR:"
             echo "$ZIP was not found in repository root."
             echo ""
-            echo "Upload the exact NadEx V4.7 ZIP file."
+            echo "Make sure the ZIP is uploaded with the exact filename."
             exit 1
           fi
 
@@ -68,15 +68,15 @@ jobs:
           unzip -t "$ZIP"
 
       # ==========================================
-      # 5. EXTRACT PACKAGE
+      # 5. EXTRACT V5.0
       # ==========================================
-      - name: Extract NadEx V4.7
+      - name: Extract NadEx V5.0
         run: |
           rm -rf extracted
           mkdir -p extracted
 
           unzip -q \
-            NadEx_Android_V4_7_FUTURISTIC_NEON_GLASS.zip \
+            NadEx_Android_V5_0_MODERN_BANKING_UI.zip \
             -d extracted
 
           echo ""
@@ -87,11 +87,11 @@ jobs:
           find extracted -maxdepth 5 -type f | sort | head -250
 
       # ==========================================
-      # 6. AUTOMATICALLY FIND PROJECT ROOT
+      # 6. DETECT PROJECT ROOT
       # ==========================================
       - name: Detect Android project root
         run: |
-          EXPECTED="extracted/NadEx_Android_V4_7_FUTURISTIC_NEON_GLASS"
+          EXPECTED="extracted/NadEx_Android_V5_0_MODERN_BANKING_UI"
 
           if [ -f "$EXPECTED/settings.gradle.kts" ]; then
 
@@ -111,7 +111,7 @@ jobs:
             if [ -z "$SETTINGS" ]; then
               echo ""
               echo "ERROR:"
-              echo "settings.gradle.kts could not be found."
+              echo "Could not locate settings.gradle.kts."
               echo ""
               echo "Extracted directories:"
               find extracted -maxdepth 4 -type d | sort
@@ -124,18 +124,18 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "PROJECT ROOT DETECTED"
+          echo "PROJECT ROOT"
           echo "========================================"
           echo "$ROOT"
 
           echo "PROJECT_ROOT=$ROOT" >> "$GITHUB_ENV"
 
       # ==========================================
-      # 7. VERIFY PROJECT STRUCTURE
+      # 7. VERIFY PROJECT
       # ==========================================
       - name: Verify NadEx Android project
         run: |
-          echo "Project root:"
+          echo "Checking:"
           echo "$PROJECT_ROOT"
 
           test -f "$PROJECT_ROOT/settings.gradle.kts"
@@ -143,12 +143,12 @@ jobs:
           test -f "$PROJECT_ROOT/app/build.gradle.kts"
 
           echo ""
-          echo "Android project structure verified."
+          echo "NadEx Android project verified."
 
       # ==========================================
-      # 8. VERIFY VERSION
+      # 8. VERIFY VERSION 5.0
       # ==========================================
-      - name: Verify NadEx V4.7 version
+      - name: Verify NadEx V5.0 version
         run: |
           FILE="$PROJECT_ROOT/app/build.gradle.kts"
 
@@ -156,16 +156,16 @@ jobs:
           echo "VERSION CHECK"
           echo "========================================"
 
-          grep -q 'versionCode = 47' "$FILE"
-          grep -q 'versionName = "4.7"' "$FILE"
+          grep -q 'versionCode = 50' "$FILE"
+          grep -q 'versionName = "5.0"' "$FILE"
 
-          echo "versionCode = 47"
-          echo "versionName = 4.7"
+          echo "versionCode = 50"
+          echo "versionName = 5.0"
           echo ""
-          echo "NadEx V4.7 version verified."
+          echo "NadEx V5.0 verified."
 
       # ==========================================
-      # 9. VERIFY PACKAGE ID
+      # 9. VERIFY NADEX PACKAGE
       # ==========================================
       - name: Verify NadEx application ID
         run: |
@@ -174,30 +174,26 @@ jobs:
           grep -q 'applicationId = "ae.transactor.app"' "$FILE"
 
           echo "========================================"
-          echo "APPLICATION ID"
+          echo "NADEX APPLICATION ID"
           echo "========================================"
           echo "ae.transactor.app"
 
       # ==========================================
-      # 10. GRADLE INFORMATION
+      # 10. SHOW GRADLE VERSION
       # ==========================================
       - name: Show Gradle information
         working-directory: ${{ env.PROJECT_ROOT }}
         run: |
-          echo "========================================"
-          echo "GRADLE INFORMATION"
-          echo "========================================"
-
           gradle --version
 
       # ==========================================
-      # 11. CLEAN
+      # 11. CLEAN PROJECT
       # ==========================================
-      - name: Clean NadEx V4.7 project
+      - name: Clean NadEx V5.0
         working-directory: ${{ env.PROJECT_ROOT }}
         run: |
           echo "========================================"
-          echo "CLEANING PROJECT"
+          echo "CLEANING NADEX V5.0"
           echo "========================================"
 
           gradle clean --stacktrace
@@ -205,23 +201,23 @@ jobs:
       # ==========================================
       # 12. BUILD APK
       # ==========================================
-      - name: Build NadEx V4.7 APK
+      - name: Build NadEx V5.0 APK
         working-directory: ${{ env.PROJECT_ROOT }}
         run: |
           echo "========================================"
-          echo "BUILDING NADEX V4.7"
-          echo "FUTURISTIC NEON GLASS"
+          echo "BUILDING NADEX V5.0"
+          echo "MODERN BANKING UI"
           echo "========================================"
 
           gradle assembleDebug --stacktrace
 
       # ==========================================
-      # 13. FIND AND VERIFY APK
+      # 13. VERIFY APK
       # ==========================================
       - name: Verify generated APK
         run: |
           echo "========================================"
-          echo "APK OUTPUT"
+          echo "SEARCHING APK OUTPUT"
           echo "========================================"
 
           find "$PROJECT_ROOT/app/build/outputs" \
@@ -234,13 +230,13 @@ jobs:
           if [ ! -f "$APK" ]; then
             echo ""
             echo "ERROR:"
-            echo "app-debug.apk was not generated."
+            echo "NadEx V5.0 APK was not generated."
             exit 1
           fi
 
           echo ""
           echo "========================================"
-          echo "NADEX V4.7 BUILD SUCCESSFUL"
+          echo "NADEX V5.0 BUILD SUCCESSFUL"
           echo "========================================"
 
           ls -lh "$APK"
@@ -248,16 +244,16 @@ jobs:
           echo "APK_PATH=$APK" >> "$GITHUB_ENV"
 
       # ==========================================
-      # 14. RENAME FINAL APK
+      # 14. PREPARE FINAL APK
       # ==========================================
-      - name: Prepare final NadEx APK
+      - name: Prepare final NadEx V5.0 APK
         run: |
           rm -rf release
           mkdir -p release
 
           cp \
             "$APK_PATH" \
-            "release/NadEx-V4.7-Futuristic-Neon-Glass.apk"
+            "release/NadEx-V5.0-Modern-Banking-UI.apk"
 
           echo ""
           echo "========================================"
@@ -265,15 +261,15 @@ jobs:
           echo "========================================"
 
           ls -lh \
-            release/NadEx-V4.7-Futuristic-Neon-Glass.apk
+            release/NadEx-V5.0-Modern-Banking-UI.apk
 
       # ==========================================
       # 15. UPLOAD APK
       # ==========================================
-      - name: Upload NadEx V4.7 APK
+      - name: Upload NadEx V5.0 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V4-7-Futuristic-Neon-Glass-APK
-          path: release/NadEx-V4.7-Futuristic-Neon-Glass.apk
+          name: NadEx-V5-0-Modern-Banking-UI-APK
+          path: release/NadEx-V5.0-Modern-Banking-UI.apk
           if-no-files-found: error
           retention-days: 30
