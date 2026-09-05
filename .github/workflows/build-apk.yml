@@ -1,10 +1,10 @@
-name: Build NadEx V4.0 APK
+name: Build NadEx V4.1 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'NadEx_Android_V4_0_PARTY_OWE_LIMIT.zip'
+      - 'NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,68 +26,93 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Verify ZIP exists
+      - name: Verify V4.1 ZIP exists
         run: |
           echo "=== REPOSITORY ROOT ==="
           ls -lah
 
-          if [ ! -f "NadEx_Android_V4_0_PARTY_OWE_LIMIT.zip" ]; then
-            echo "ERROR: NadEx_Android_V4_0_PARTY_OWE_LIMIT.zip is missing."
-            echo "Upload the ZIP to the repository root."
+          ZIP="NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY.zip"
+
+          if [ ! -f "$ZIP" ]; then
+            echo "ERROR: $ZIP is missing from the repository root."
+            echo "Upload the exact V4.1 ZIP file before running this workflow."
             exit 1
           fi
 
-          echo "NadEx V4.0 ZIP found successfully."
+          echo "NadEx V4.1 ZIP found."
+          unzip -t "$ZIP"
 
-      - name: Extract NadEx V4.0
+      - name: Extract NadEx V4.1
         run: |
           rm -rf extracted
           mkdir -p extracted
 
-          unzip -q NadEx_Android_V4_0_PARTY_OWE_LIMIT.zip -d extracted
+          unzip -q NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY.zip -d extracted
 
-          echo "=== EXTRACTED CONTENT ==="
-          find extracted -maxdepth 3 -type f | sort | head -100
+          echo "=== EXTRACTED PROJECT ==="
+          find extracted -maxdepth 3 -type f | sort | head -120
 
-      - name: Verify NadEx V4.0 project
+      - name: Verify project structure
         run: |
-          test -f extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/settings.gradle.kts
-          test -f extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/build.gradle.kts
-          test -f extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build.gradle.kts
+          ROOT="extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY"
 
-          echo "NadEx V4.0 project structure verified."
+          test -f "$ROOT/settings.gradle.kts"
+          test -f "$ROOT/build.gradle.kts"
+          test -f "$ROOT/app/build.gradle.kts"
 
-      - name: Verify NadEx V4.0 version
+          echo "NadEx V4.1 Android project structure verified."
+
+      - name: Verify version
         run: |
-          grep -q 'versionCode = 40' \
-          extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build.gradle.kts
+          FILE="extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/app/build.gradle.kts"
 
-          grep -q 'versionName = "4.0"' \
-          extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build.gradle.kts
+          grep -q 'versionCode = 41' "$FILE"
+          grep -q 'versionName = "4.1"' "$FILE"
 
-          echo "Confirmed NadEx V4.0 / versionCode 40."
+          echo "Confirmed versionCode 41 / versionName 4.1"
 
-      - name: Build NadEx V4.0 APK
-        working-directory: extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT
+      - name: Verify NadEx package
+        run: |
+          FILE="extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/app/build.gradle.kts"
+
+          grep -q 'applicationId = "ae.transactor.app"' "$FILE"
+
+          echo "Confirmed NadEx application package."
+
+      - name: Build NadEx V4.1 APK
+        working-directory: extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY
         run: |
           gradle clean assembleDebug --stacktrace
 
-      - name: Verify APK generated
+      - name: Verify generated APK
         run: |
-          APK="extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo "ERROR: NadEx V4.0 APK was not generated."
+            echo "ERROR: NadEx V4.1 APK was not generated."
             exit 1
           fi
 
-          echo "NadEx V4.0 APK generated successfully."
+          echo "========================================"
+          echo "NadEx V4.1 APK BUILD SUCCESSFUL"
+          echo "========================================"
+
           ls -lh "$APK"
 
-      - name: Upload NadEx V4.0 APK
+      - name: Prepare NadEx APK
+        run: |
+          mkdir -p release
+
+          cp \
+          extracted/NadEx_Android_V4_1_EXECUTIVE_MULTICURRENCY/app/build/outputs/apk/debug/app-debug.apk \
+          release/NadEx-V4.1-Executive-MultiCurrency.apk
+
+          ls -lh release/
+
+      - name: Upload NadEx V4.1 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V4-0-Party-Owe-Limit-APK
-          path: extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build/outputs/apk/debug/app-debug.apk
+          name: NadEx-V4-1-Executive-MultiCurrency-APK
+          path: release/NadEx-V4.1-Executive-MultiCurrency.apk
           if-no-files-found: error
           retention-days: 30
