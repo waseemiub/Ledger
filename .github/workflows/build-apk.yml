@@ -1,13 +1,10 @@
-name: Build NadEx APK
+name: Build NadEx V4.2 APK
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
     paths:
-      - 'NadEx_Android_V4_2_UI_CORRECTED_COMPLETE.zip'
+      - 'NadEx_Android_V4_2_COMPLETE_CORRECTED.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -24,91 +21,104 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Verify NadEx package
-        shell: bash
+      - name: Verify NadEx V4.2 ZIP
         run: |
-          if [ ! -f "NadEx_Android_V4_2_UI_CORRECTED_COMPLETE.zip" ]; then
-            echo "ERROR: NadEx ZIP is not in repository root."
-            echo "Files currently in repository:"
-            ls -la
+          echo "=== REPOSITORY ROOT ==="
+          ls -lah
+
+          ZIP="NadEx_Android_V4_2_COMPLETE_CORRECTED.zip"
+
+          if [ ! -f "$ZIP" ]; then
+            echo "ERROR: $ZIP is not in the repository root."
+            echo "Upload the exact V4.2 ZIP file first."
             exit 1
           fi
 
-          echo "NadEx package found successfully."
+          echo "ZIP FOUND:"
+          ls -lh "$ZIP"
 
-      - name: Extract NadEx project
-        shell: bash
+          echo "=== CHECK ZIP INTEGRITY ==="
+          unzip -t "$ZIP"
+
+      - name: Extract NadEx V4.2
         run: |
-          rm -rf nadex_build
-          mkdir -p nadex_build
+          rm -rf extracted
+          mkdir -p extracted
 
-          unzip -q \
-            NadEx_Android_V4_2_UI_CORRECTED_COMPLETE.zip \
-            -d nadex_build
+          unzip -q NadEx_Android_V4_2_COMPLETE_CORRECTED.zip -d extracted
 
-          echo "Project extracted."
-
-          ls -la nadex_build/NadEx_Android_V4_2_UI_CORRECTED_COMPLETE
+          echo "=== EXTRACTED CONTENT ==="
+          find extracted -maxdepth 4 -type f | sort | head -150
 
       - name: Verify Android project
-        shell: bash
         run: |
-          PROJECT="nadex_build/NadEx_Android_V4_2_UI_CORRECTED_COMPLETE"
+          ROOT="extracted/NadEx_Android_V4_2_COMPLETE_CORRECTED"
 
-          if [ ! -f "$PROJECT/settings.gradle.kts" ]; then
-            echo "ERROR: settings.gradle.kts missing."
-            exit 1
-          fi
+          test -f "$ROOT/settings.gradle.kts"
+          test -f "$ROOT/build.gradle.kts"
+          test -f "$ROOT/app/build.gradle.kts"
 
-          if [ ! -f "$PROJECT/build.gradle.kts" ]; then
-            echo "ERROR: build.gradle.kts missing."
-            exit 1
-          fi
+          echo "Android project structure verified."
 
-          if [ ! -f "$PROJECT/app/build.gradle.kts" ]; then
-            echo "ERROR: app/build.gradle.kts missing."
-            exit 1
-          fi
+      - name: Verify NadEx V4.2 version
+        run: |
+          FILE="extracted/NadEx_Android_V4_2_COMPLETE_CORRECTED/app/build.gradle.kts"
 
-          echo "Android project verified successfully."
+          grep -q 'versionCode = 42' "$FILE"
+          grep -q 'versionName = "4.2"' "$FILE"
 
-      - name: Build NadEx APK
-        working-directory: nadex_build/NadEx_Android_V4_2_UI_CORRECTED_COMPLETE
-        shell: bash
+          echo "Confirmed:"
+          echo "versionCode = 42"
+          echo "versionName = 4.2"
+
+      - name: Verify NadEx application ID
+        run: |
+          FILE="extracted/NadEx_Android_V4_2_COMPLETE_CORRECTED/app/build.gradle.kts"
+
+          grep -q 'applicationId = "ae.transactor.app"' "$FILE"
+
+          echo "Confirmed NadEx package: ae.transactor.app"
+
+      - name: Build NadEx V4.2 APK
+        working-directory: extracted/NadEx_Android_V4_2_COMPLETE_CORRECTED
         run: |
           gradle clean assembleDebug --stacktrace
 
       - name: Verify APK
-        shell: bash
         run: |
-          APK="nadex_build/NadEx_Android_V4_2_UI_CORRECTED_COMPLETE/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/NadEx_Android_V4_2_COMPLETE_CORRECTED/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
             echo "ERROR: APK was not generated."
-            find nadex_build -type f -name "*.apk"
             exit 1
           fi
 
-          echo "APK successfully generated:"
+          echo "======================================"
+          echo "NADEX V4.2 BUILD SUCCESSFUL"
+          echo "======================================"
+
           ls -lh "$APK"
 
-      - name: Prepare NadEx APK
-        shell: bash
+      - name: Prepare final APK
         run: |
           mkdir -p release
-          cp \
-            nadex_build/NadEx_Android_V4_2_UI_CORRECTED_COMPLETE/app/build/outputs/apk/debug/app-debug.apk \
-            release/NadEx-V4.2-UI-Corrected.apk
 
-      - name: Upload NadEx APK
+          cp \
+          extracted/NadEx_Android_V4_2_COMPLETE_CORRECTED/app/build/outputs/apk/debug/app-debug.apk \
+          release/NadEx-V4.2-Complete-Corrected.apk
+
+          echo "=== FINAL APK ==="
+          ls -lh release/NadEx-V4.2-Complete-Corrected.apk
+
+      - name: Upload NadEx V4.2 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V4.2-UI-Corrected
-          path: release/NadEx-V4.2-UI-Corrected.apk
+          name: NadEx-V4-2-Complete-Corrected-APK
+          path: release/NadEx-V4.2-Complete-Corrected.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 30w
