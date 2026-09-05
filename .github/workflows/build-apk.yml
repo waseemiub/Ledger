@@ -1,10 +1,10 @@
-name: Build NadEx V3.9 APK
+name: Build NadEx V4.0 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'NadEx_Android_V3_9_UI_POLISH.zip'
+      - 'NadEx_Android_V4_0_PARTY_OWE_LIMIT.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -26,55 +26,68 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Extract NadEx V3.9
+      - name: Verify ZIP exists
+        run: |
+          echo "=== REPOSITORY ROOT ==="
+          ls -lah
+
+          if [ ! -f "NadEx_Android_V4_0_PARTY_OWE_LIMIT.zip" ]; then
+            echo "ERROR: NadEx_Android_V4_0_PARTY_OWE_LIMIT.zip is missing."
+            echo "Upload the ZIP to the repository root."
+            exit 1
+          fi
+
+          echo "NadEx V4.0 ZIP found successfully."
+
+      - name: Extract NadEx V4.0
         run: |
           rm -rf extracted
           mkdir -p extracted
 
-          unzip -q NadEx_Android_V3_9_UI_POLISH.zip -d extracted
+          unzip -q NadEx_Android_V4_0_PARTY_OWE_LIMIT.zip -d extracted
 
-          echo "=== NADEX V3.9 EXTRACTED CONTENT ==="
+          echo "=== EXTRACTED CONTENT ==="
           find extracted -maxdepth 3 -type f | sort | head -100
 
-      - name: Verify NadEx V3.9 project
+      - name: Verify NadEx V4.0 project
         run: |
-          test -f extracted/NadEx_Android_V3_9_UI_POLISH/settings.gradle.kts
-          test -f extracted/NadEx_Android_V3_9_UI_POLISH/build.gradle.kts
-          test -f extracted/NadEx_Android_V3_9_UI_POLISH/app/build.gradle.kts
+          test -f extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/settings.gradle.kts
+          test -f extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/build.gradle.kts
+          test -f extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build.gradle.kts
 
-          echo "NadEx V3.9 project verified successfully"
+          echo "NadEx V4.0 project structure verified."
 
-      - name: Verify NadEx version
+      - name: Verify NadEx V4.0 version
         run: |
-          grep -q 'versionCode = 39' \
-          extracted/NadEx_Android_V3_9_UI_POLISH/app/build.gradle.kts
+          grep -q 'versionCode = 40' \
+          extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build.gradle.kts
 
-          grep -q 'versionName = "3.9"' \
-          extracted/NadEx_Android_V3_9_UI_POLISH/app/build.gradle.kts
+          grep -q 'versionName = "4.0"' \
+          extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build.gradle.kts
 
-          echo "Confirmed NadEx V3.9"
+          echo "Confirmed NadEx V4.0 / versionCode 40."
 
-      - name: Build NadEx V3.9 APK
-        working-directory: extracted/NadEx_Android_V3_9_UI_POLISH
+      - name: Build NadEx V4.0 APK
+        working-directory: extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT
         run: |
           gradle clean assembleDebug --stacktrace
 
       - name: Verify APK generated
         run: |
-          APK="extracted/NadEx_Android_V3_9_UI_POLISH/app/build/outputs/apk/debug/app-debug.apk"
+          APK="extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK" ]; then
-            echo "ERROR: NadEx V3.9 APK was not generated"
+            echo "ERROR: NadEx V4.0 APK was not generated."
             exit 1
           fi
 
-          echo "NadEx V3.9 APK successfully generated"
+          echo "NadEx V4.0 APK generated successfully."
           ls -lh "$APK"
 
-      - name: Upload NadEx V3.9 APK
+      - name: Upload NadEx V4.0 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V3-9-UI-Polish-APK
-          path: extracted/NadEx_Android_V3_9_UI_POLISH/app/build/outputs/apk/debug/app-debug.apk
+          name: NadEx-V4-0-Party-Owe-Limit-APK
+          path: extracted/NadEx_Android_V4_0_PARTY_OWE_LIMIT/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
