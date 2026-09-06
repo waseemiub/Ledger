@@ -1,19 +1,21 @@
-name: Build NadEx V5.6 Ledger Final Fix
+name: Build NadEx V5.7 Ledger Only Fix
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build NadEx V5.6 APK
+    name: Build NadEx V5.7 APK
     runs-on: ubuntu-latest
 
     steps:
+
       # ==========================================
       # 1. CHECKOUT
       # ==========================================
       - name: Checkout repository
         uses: actions/checkout@v4
+
 
       # ==========================================
       # 2. JAVA 17
@@ -24,6 +26,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+
       # ==========================================
       # 3. GRADLE 8.9
       # ==========================================
@@ -32,19 +35,20 @@ jobs:
         with:
           gradle-version: '8.9'
 
+
       # ==========================================
-      # 4. VERIFY ZIP
+      # 4. VERIFY V5.7 ZIP
       # ==========================================
-      - name: Verify NadEx V5.6 ZIP
+      - name: Verify NadEx V5.7 ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP="NadEx_Android_V5_6_LEDGER_RENDER_FINAL_FIX.zip"
+          ZIP="NadEx_Android_V5_7_LEDGER_ONLY_FIX.zip"
 
           echo "========================================"
-          echo "NADEX V5.6"
-          echo "LEDGER RENDER FINAL FIX"
+          echo "NADEX V5.7"
+          echo "LEDGER ONLY FIX"
           echo "========================================"
           echo ""
 
@@ -54,10 +58,10 @@ jobs:
 
           if [ ! -f "$ZIP" ]; then
             echo "ERROR:"
-            echo "$ZIP was not found in repository root."
+            echo "$ZIP was not found in the repository root."
             echo ""
             echo "Required exact filename:"
-            echo "NadEx_Android_V5_6_LEDGER_RENDER_FINAL_FIX.zip"
+            echo "NadEx_Android_V5_7_LEDGER_ONLY_FIX.zip"
             exit 1
           fi
 
@@ -71,10 +75,11 @@ jobs:
           echo ""
           echo "ZIP integrity PASSED."
 
+
       # ==========================================
       # 5. EXTRACT PACKAGE
       # ==========================================
-      - name: Extract NadEx V5.6
+      - name: Extract NadEx V5.7
         shell: bash
         run: |
           set -e
@@ -83,7 +88,7 @@ jobs:
           mkdir -p extracted
 
           unzip -q \
-            NadEx_Android_V5_6_LEDGER_RENDER_FINAL_FIX.zip \
+            NadEx_Android_V5_7_LEDGER_ONLY_FIX.zip \
             -d extracted
 
           echo ""
@@ -96,6 +101,7 @@ jobs:
             -type f \
             | sort \
             | head -350
+
 
       # ==========================================
       # 6. DETECT ANDROID PROJECT ROOT
@@ -118,7 +124,7 @@ jobs:
           if [ -z "$SETTINGS" ]; then
             echo ""
             echo "ERROR:"
-            echo "Could not locate settings.gradle.kts or settings.gradle."
+            echo "Could not locate Android settings.gradle file."
             echo ""
             echo "Extracted folders:"
             find extracted -maxdepth 6 -type d | sort
@@ -133,8 +139,9 @@ jobs:
 
           echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
 
+
       # ==========================================
-      # 7. VERIFY PROJECT STRUCTURE
+      # 7. VERIFY ANDROID PROJECT
       # ==========================================
       - name: Verify Android project
         shell: bash
@@ -180,10 +187,11 @@ jobs:
           echo ""
           echo "Android project PASSED."
 
+
       # ==========================================
-      # 8. VERIFY VERSION 5.6
+      # 8. VERIFY VERSION 5.7
       # ==========================================
-      - name: Verify NadEx V5.6 version
+      - name: Verify NadEx V5.7 version
         shell: bash
         run: |
           set -e
@@ -200,36 +208,37 @@ jobs:
           echo "========================================"
 
           if ! grep -Eq \
-            'versionCode[[:space:]]*=?[[:space:]]*56' \
+            'versionCode[[:space:]]*=?[[:space:]]*57' \
             "$FILE"; then
 
             echo "ERROR:"
-            echo "versionCode 56 was not found."
+            echo "versionCode 57 was not found."
             echo ""
             cat "$FILE"
             exit 1
           fi
 
           if ! grep -Eq \
-            'versionName[[:space:]]*=?[[:space:]]*["'\'']5\.6["'\'']' \
+            'versionName[[:space:]]*=?[[:space:]]*["'\'']5\.7["'\'']' \
             "$FILE"; then
 
             echo "ERROR:"
-            echo "versionName 5.6 was not found."
+            echo "versionName 5.7 was not found."
             echo ""
             cat "$FILE"
             exit 1
           fi
 
-          echo "versionCode = 56"
-          echo "versionName = 5.6"
+          echo "versionCode = 57"
+          echo "versionName = 5.7"
           echo ""
-          echo "NadEx V5.6 verified."
+          echo "NadEx V5.7 verified."
+
 
       # ==========================================
       # 9. VERIFY APPLICATION ID
       # ==========================================
-      - name: Verify application ID
+      - name: Verify NadEx application ID
         shell: bash
         run: |
           set -e
@@ -257,10 +266,11 @@ jobs:
             exit 1
           fi
 
+
       # ==========================================
-      # 10. VERIFY WEB ASSETS
+      # 10. VERIFY WEB APPLICATION
       # ==========================================
-      - name: Verify NadEx web assets
+      - name: Verify NadEx web application
         shell: bash
         run: |
           set -e
@@ -269,12 +279,13 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "WEB ASSET CHECK"
+          echo "WEB APPLICATION CHECK"
           echo "========================================"
 
           if [ ! -d "$WWW" ]; then
             echo "ERROR:"
-            echo "NadEx web assets directory was not found."
+            echo "Web application folder not found:"
+            echo "$WWW"
             exit 1
           fi
 
@@ -285,7 +296,7 @@ jobs:
           echo "app.js FOUND"
 
           echo ""
-          echo "Available JavaScript files:"
+          echo "JavaScript files:"
           find "$WWW" \
             -maxdepth 1 \
             -type f \
@@ -294,7 +305,7 @@ jobs:
             | sort
 
           echo ""
-          echo "Available CSS files:"
+          echo "CSS files:"
           find "$WWW" \
             -maxdepth 1 \
             -type f \
@@ -302,13 +313,11 @@ jobs:
             -printf "%f\n" \
             | sort
 
-          echo ""
-          echo "Web assets PASSED."
 
       # ==========================================
-      # 11. VERIFY V5.6 LEDGER CORE CORRECTION
+      # 11. VERIFY LEDGER-ONLY FIX
       # ==========================================
-      - name: Verify V5.6 Ledger core
+      - name: Verify V5.7 Ledger fix
         shell: bash
         run: |
           set -e
@@ -317,44 +326,38 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "V5.6 LEDGER CORE CHECK"
+          echo "V5.7 LEDGER FIX CHECK"
           echo "========================================"
 
           echo "Checking JavaScript syntax..."
+          echo ""
 
-          if command -v node >/dev/null 2>&1; then
-            node --check "$WWW/app.js"
-
-            if [ -f "$WWW/v41.js" ]; then
-              node --check "$WWW/v41.js"
+          for JS in "$WWW"/*.js; do
+            if [ -f "$JS" ]; then
+              echo "Checking $(basename "$JS")"
+              node --check "$JS"
             fi
-
-            if [ -f "$WWW/v52.js" ]; then
-              node --check "$WWW/v52.js"
-            fi
-
-            if [ -f "$WWW/v53.js" ]; then
-              node --check "$WWW/v53.js"
-            fi
-          fi
+          done
 
           echo ""
-          echo "Ledger JavaScript syntax PASSED."
+          echo "All JavaScript syntax checks PASSED."
+
 
       # ==========================================
-      # 12. VERIFY JVM 17
+      # 12. VERIFY JAVA / KOTLIN JVM 17
       # ==========================================
-      - name: Verify JVM 17 configuration
+      - name: Verify JVM 17
         shell: bash
         run: |
           set -e
 
           echo ""
           echo "========================================"
-          echo "JVM 17 CHECK"
+          echo "JVM CONFIGURATION"
           echo "========================================"
 
           if [ -f "$PROJECT_ROOT/app/build.gradle.kts" ]; then
+
             FILE="$PROJECT_ROOT/app/build.gradle.kts"
 
             if grep -q "JavaVersion.VERSION_17" "$FILE"; then
@@ -370,13 +373,15 @@ jobs:
               echo "WARNING:"
               echo "Explicit Kotlin jvmTarget 17 not found."
             fi
+
           fi
 
           echo ""
           echo "GitHub Java runtime = 17"
 
+
       # ==========================================
-      # 13. GRADLE INFORMATION
+      # 13. SHOW GRADLE INFORMATION
       # ==========================================
       - name: Show Gradle information
         working-directory: ${{ env.PROJECT_ROOT }}
@@ -389,10 +394,11 @@ jobs:
 
           gradle --version
 
+
       # ==========================================
-      # 14. CLEAN PROJECT
+      # 14. CLEAN
       # ==========================================
-      - name: Clean NadEx V5.6
+      - name: Clean NadEx V5.7
         working-directory: ${{ env.PROJECT_ROOT }}
         shell: bash
         run: |
@@ -400,15 +406,16 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "CLEANING NADEX V5.6"
+          echo "CLEANING NADEX V5.7"
           echo "========================================"
 
           gradle clean --stacktrace
 
+
       # ==========================================
       # 15. BUILD APK
       # ==========================================
-      - name: Build NadEx V5.6 APK
+      - name: Build NadEx V5.7 APK
         working-directory: ${{ env.PROJECT_ROOT }}
         shell: bash
         run: |
@@ -416,11 +423,12 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "BUILDING NADEX V5.6"
-          echo "LEDGER RENDER FINAL FIX"
+          echo "BUILDING NADEX V5.7"
+          echo "LEDGER ONLY FIX"
           echo "========================================"
 
           gradle assembleDebug --stacktrace
+
 
       # ==========================================
       # 16. LOCATE GENERATED APK
@@ -443,23 +451,19 @@ jobs:
           DEFAULT_APK="$PROJECT_ROOT/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ -f "$DEFAULT_APK" ]; then
-
             APK="$DEFAULT_APK"
-
           else
-
             APK=$(find \
               "$PROJECT_ROOT/app/build/outputs/apk" \
               -type f \
               -name "*.apk" \
               | head -1 || true)
-
           fi
 
           if [ -z "$APK" ] || [ ! -f "$APK" ]; then
             echo ""
             echo "ERROR:"
-            echo "NadEx V5.6 APK was not generated."
+            echo "NadEx V5.7 APK was not generated."
             echo ""
             echo "Available build output:"
 
@@ -481,10 +485,11 @@ jobs:
 
           echo "APK_PATH=$APK" >> "$GITHUB_ENV"
 
+
       # ==========================================
       # 17. PREPARE FINAL APK
       # ==========================================
-      - name: Prepare final NadEx V5.6 APK
+      - name: Prepare final NadEx V5.7 APK
         shell: bash
         run: |
           set -e
@@ -494,7 +499,7 @@ jobs:
 
           cp \
             "$APK_PATH" \
-            "release/NadEx-V5.6-Ledger-Render-Final-Fix.apk"
+            "release/NadEx-V5.7-Ledger-Only-Fix.apk"
 
           echo ""
           echo "========================================"
@@ -502,20 +507,21 @@ jobs:
           echo "========================================"
 
           ls -lh \
-            "release/NadEx-V5.6-Ledger-Render-Final-Fix.apk"
+            "release/NadEx-V5.7-Ledger-Only-Fix.apk"
 
           echo ""
           echo "========================================"
-          echo "NADEX V5.6 BUILD SUCCESSFUL"
+          echo "NADEX V5.7 BUILD SUCCESSFUL"
           echo "========================================"
+
 
       # ==========================================
       # 18. UPLOAD APK
       # ==========================================
-      - name: Upload NadEx V5.6 APK
+      - name: Upload NadEx V5.7 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V5-6-Ledger-Render-Final-Fix-APK
-          path: release/NadEx-V5.6-Ledger-Render-Final-Fix.apk
+          name: NadEx-V5-7-Ledger-Only-Fix-APK
+          path: release/NadEx-V5.7-Ledger-Only-Fix.apk
           if-no-files-found: error
           retention-days: 30
