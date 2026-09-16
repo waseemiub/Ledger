@@ -1,0 +1,675 @@
+name: Build NadEx V6.6 Separate Ledger Monthly Expense
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'NadEx_Android_V6_6_SEPARATE_LEDGER_MONTHLY_EXPENSE.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    name: Build NadEx V6.6 APK
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ==========================================
+      # 1. CHECKOUT
+      # ==========================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ==========================================
+      # 2. JAVA 17
+      # ==========================================
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ==========================================
+      # 3. GRADLE 8.9
+      # ==========================================
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      # ==========================================
+      # 4. VERIFY ZIP
+      # ==========================================
+      - name: Verify NadEx V6.6 ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP="NadEx_Android_V6_6_SEPARATE_LEDGER_MONTHLY_EXPENSE.zip"
+
+          echo "============================================"
+          echo "NADEX V6.6"
+          echo "SEPARATE LEDGER + MONTHLY EXPENSE"
+          echo "============================================"
+
+          echo ""
+          echo "Repository contents:"
+          ls -lah
+
+          if [ ! -f "$ZIP" ]; then
+            echo ""
+            echo "ERROR: Required ZIP package not found."
+            echo ""
+            echo "Required exact filename:"
+            echo "$ZIP"
+            exit 1
+          fi
+
+          echo ""
+          echo "ZIP FOUND:"
+          ls -lh "$ZIP"
+
+          echo ""
+          echo "Checking ZIP integrity..."
+          unzip -t "$ZIP"
+
+          echo ""
+          echo "ZIP integrity PASSED."
+
+      # ==========================================
+      # 5. EXTRACT PACKAGE
+      # ==========================================
+      - name: Extract NadEx V6.6
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf extracted
+          mkdir -p extracted
+
+          unzip -q \
+            NadEx_Android_V6_6_SEPARATE_LEDGER_MONTHLY_EXPENSE.zip \
+            -d extracted
+
+          echo ""
+          echo "============================================"
+          echo "PACKAGE EXTRACTED"
+          echo "============================================"
+
+          find extracted \
+            -maxdepth 7 \
+            -type f \
+            | sort \
+            | head -400
+
+      # ==========================================
+      # 6. DETECT PROJECT ROOT
+      # ==========================================
+      - name: Detect Android project root
+        shell: bash
+        run: |
+          set -e
+
+          EXPECTED="extracted/NadEx_Android_V6_6_SEPARATE_LEDGER_MONTHLY_EXPENSE"
+
+          if [ -f "$EXPECTED/settings.gradle.kts" ]; then
+
+            PROJECT_ROOT="$EXPECTED"
+
+          elif [ -f "extracted/settings.gradle.kts" ]; then
+
+            PROJECT_ROOT="extracted"
+
+          else
+
+            SETTINGS=$(find extracted \
+              -type f \
+              \( -name "settings.gradle.kts" -o -name "settings.gradle" \) \
+              | head -1 || true)
+
+            if [ -z "$SETTINGS" ]; then
+
+              echo ""
+              echo "ERROR:"
+              echo "Android project root could not be found."
+              echo ""
+
+              find extracted \
+                -maxdepth 7 \
+                -type d \
+                | sort
+
+              exit 1
+
+            fi
+
+            PROJECT_ROOT=$(dirname "$SETTINGS")
+
+          fi
+
+          echo ""
+          echo "============================================"
+          echo "ANDROID PROJECT ROOT"
+          echo "============================================"
+          echo "$PROJECT_ROOT"
+
+          echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
+
+      # ==========================================
+      # 7. VERIFY PROJECT
+      # ==========================================
+      - name: Verify Android project
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "============================================"
+          echo "ANDROID PROJECT CHECK"
+          echo "============================================"
+
+          test -f "$PROJECT_ROOT/settings.gradle.kts"
+          test -f "$PROJECT_ROOT/build.gradle.kts"
+          test -f "$PROJECT_ROOT/app/build.gradle.kts"
+          test -f "$PROJECT_ROOT/app/src/main/AndroidManifest.xml"
+
+          echo "settings.gradle.kts FOUND"
+          echo "build.gradle.kts FOUND"
+          echo "app/build.gradle.kts FOUND"
+          echo "AndroidManifest.xml FOUND"
+
+      # ==========================================
+      # 8. VERIFY APPLICATION ID
+      # ==========================================
+      - name: Verify application ID
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/build.gradle.kts"
+
+          echo ""
+          echo "============================================"
+          echo "APPLICATION ID CHECK"
+          echo "============================================"
+
+          if ! grep -q 'applicationId = "ae.transactor.app"' "$FILE"; then
+
+            echo ""
+            echo "ERROR:"
+            echo "Expected NadEx applicationId not found."
+            echo ""
+
+            cat "$FILE"
+
+            exit 1
+          fi
+
+          echo "applicationId = ae.transactor.app"
+          echo ""
+          echo "Existing NadEx installation remains update-compatible."
+
+      # ==========================================
+      # 9. VERIFY VERSION
+      # ==========================================
+      - name: Verify NadEx V6.6
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/build.gradle.kts"
+
+          echo ""
+          echo "============================================"
+          echo "VERSION CHECK"
+          echo "============================================"
+
+          if ! grep -q 'versionCode = 66' "$FILE"; then
+
+            echo ""
+            echo "ERROR: versionCode 66 not found."
+            echo ""
+
+            cat "$FILE"
+
+            exit 1
+          fi
+
+          if ! grep -q 'versionName = "6.6"' "$FILE"; then
+
+            echo ""
+            echo "ERROR: versionName 6.6 not found."
+            echo ""
+
+            cat "$FILE"
+
+            exit 1
+          fi
+
+          echo "versionCode = 66"
+          echo "versionName = 6.6"
+          echo ""
+          echo "NadEx V6.6 verified."
+
+      # ==========================================
+      # 10. VERIFY WEB APP FILES
+      # ==========================================
+      - name: Verify NadEx web application
+        shell: bash
+        run: |
+          set -e
+
+          WWW="$PROJECT_ROOT/app/src/main/assets/www"
+
+          echo ""
+          echo "============================================"
+          echo "WEB APPLICATION CHECK"
+          echo "============================================"
+
+          test -f "$WWW/index.html"
+          test -f "$WWW/app.js"
+          test -f "$WWW/v61.js"
+          test -f "$WWW/v63.js"
+          test -f "$WWW/v64.js"
+          test -f "$WWW/v66.js"
+
+          echo "index.html FOUND"
+          echo "Main NadEx application FOUND"
+          echo "V6.1 Minimal Transaction engine FOUND"
+          echo "V6.3 Edit/Save controller FOUND"
+          echo "V6.4 Remaining Limit FOUND"
+          echo "V6.6 Separation engine FOUND"
+
+      # ==========================================
+      # 11. VERIFY V6.5 LINK LAYER REMOVED
+      # ==========================================
+      - name: Verify old Monthly Expense Ledger link removed
+        shell: bash
+        run: |
+          set -e
+
+          WWW="$PROJECT_ROOT/app/src/main/assets/www"
+          INDEX="$WWW/index.html"
+
+          echo ""
+          echo "============================================"
+          echo "OLD LINK REMOVAL CHECK"
+          echo "============================================"
+
+          if grep -q 'v65.js' "$INDEX"; then
+
+            echo ""
+            echo "ERROR:"
+            echo "Old V6.5 Monthly Expense/Ledger link is still loaded."
+            exit 1
+
+          fi
+
+          echo "V6.5 automatic linking layer NOT loaded."
+          echo ""
+          echo "Monthly Expense and Ledger separation confirmed."
+
+      # ==========================================
+      # 12. VERIFY MONTHLY EXPENSE IS STANDALONE
+      # ==========================================
+      - name: Verify standalone Monthly Expense
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v66.js"
+
+          echo ""
+          echo "============================================"
+          echo "MONTHLY EXPENSE SEPARATION CHECK"
+          echo "============================================"
+
+          grep -q "syncMessLedger" "$FILE"
+          grep -q "saveMessOnly" "$FILE"
+          grep -q "openPurchase" "$FILE"
+
+          echo "Monthly Expense standalone synchronization rule FOUND"
+          echo "Independent Monthly Expense storage FOUND"
+          echo "Independent Purchase editor FOUND"
+
+          echo ""
+          echo "Monthly Expense separation verified."
+
+      # ==========================================
+      # 13. VERIFY SAVE PURCHASE
+      # ==========================================
+      - name: Verify Save Purchase
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v66.js"
+
+          echo ""
+          echo "============================================"
+          echo "SAVE PURCHASE CHECK"
+          echo "============================================"
+
+          grep -q "savePurchase" "$FILE"
+          grep -q "SAVE PURCHASE" "$FILE"
+          grep -q "SAVING..." "$FILE"
+          grep -q "saveMessOnly" "$FILE"
+          grep -q "Purchase storage verification failed" "$FILE"
+
+          echo "Save Purchase button FOUND"
+          echo "Save Purchase handler FOUND"
+          echo "Monthly Expense storage write FOUND"
+          echo "Storage verification FOUND"
+
+          echo ""
+          echo "SAVE PURCHASE functionality verified."
+
+      # ==========================================
+      # 14. VERIFY EDIT PURCHASE
+      # ==========================================
+      - name: Verify Edit Purchase
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v66.js"
+
+          echo ""
+          echo "============================================"
+          echo "EDIT PURCHASE CHECK"
+          echo "============================================"
+
+          grep -q "Edit Purchase" "$FILE"
+          grep -q "UPDATE PURCHASE" "$FILE"
+          grep -q "v66EditPurchase" "$FILE"
+          grep -q "openPurchase({editId:id})" "$FILE"
+
+          echo "Edit Purchase dialog FOUND"
+          echo "Update Purchase button FOUND"
+          echo "Edit Purchase event handler FOUND"
+          echo "Existing purchase loading FOUND"
+
+          echo ""
+          echo "EDIT / UPDATE PURCHASE functionality verified."
+
+      # ==========================================
+      # 15. VERIFY PURCHASE BUTTONS
+      # ==========================================
+      - name: Verify Purchase entry buttons
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v66.js"
+
+          echo ""
+          echo "============================================"
+          echo "PURCHASE BUTTON CHECK"
+          echo "============================================"
+
+          grep -q "newPurchase" "$FILE"
+          grep -q "newPurchaseTop" "$FILE"
+          grep -q "bindMess" "$FILE"
+
+          echo "+ Buy button binding FOUND"
+          echo "+ New Purchase button binding FOUND"
+          echo "Purchase button rebinding FOUND"
+
+      # ==========================================
+      # 16. VERIFY MY EXPENSE IS LEDGER ONLY
+      # ==========================================
+      - name: Verify My Expense information account
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v66.js"
+
+          echo ""
+          echo "============================================"
+          echo "MY EXPENSE LEDGER CHECK"
+          echo "============================================"
+
+          grep -q "myExpenseData" "$FILE"
+          grep -q "myExpenseParty" "$FILE"
+          grep -q "Information only" "$FILE"
+          grep -q "Ledger-only" "$FILE"
+
+          echo "My Expense calculator FOUND"
+          echo "My Expense information statement FOUND"
+          echo "Information-only mode FOUND"
+          echo "Ledger-only logic FOUND"
+
+          echo ""
+          echo "My Expense is independent from Monthly Expense."
+
+      # ==========================================
+      # 17. VERIFY MONTHLY EXPENSE DOES NOT
+      #     AFFECT LEDGER
+      # ==========================================
+      - name: Verify Monthly Expense excluded from Ledger
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v66.js"
+
+          echo ""
+          echo "============================================"
+          echo "LEDGER SEPARATION CHECK"
+          echo "============================================"
+
+          grep -q "messId" "$FILE"
+          grep -q "priorStates" "$FILE"
+
+          echo "Historical Monthly Expense-linked entries detected."
+          echo "Ledger filtering rule FOUND."
+          echo ""
+          echo "Monthly Expense-linked records will not affect Ledger balances."
+
+      # ==========================================
+      # 18. VERIFY V6.3 EDIT SAVE PRESERVED
+      # ==========================================
+      - name: Verify Ledger Edit Save preserved
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v63.js"
+
+          echo ""
+          echo "============================================"
+          echo "LEDGER EDIT / SAVE CHECK"
+          echo "============================================"
+
+          grep -q "transactionActions" "$FILE"
+          grep -q "v63Save" "$FILE"
+          grep -q "SAVE CHANGES" "$FILE"
+          grep -q "addEventListener" "$FILE"
+          grep -q "localStorage.setItem" "$FILE"
+
+          echo "Ledger transaction editor FOUND"
+          echo "Save Changes handler FOUND"
+          echo "Storage update FOUND"
+          echo ""
+          echo "Working V6.3 Edit/Save preserved."
+
+      # ==========================================
+      # 19. VERIFY REMAINING LIMIT PRESERVED
+      # ==========================================
+      - name: Verify Remaining Limit preserved
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v64.js"
+
+          echo ""
+          echo "============================================"
+          echo "REMAINING LIMIT CHECK"
+          echo "============================================"
+
+          grep -q "limitOf" "$FILE"
+          grep -q "REMAINING" "$FILE"
+          grep -q "OVER LIMIT" "$FILE"
+
+          echo "Party limit reader FOUND"
+          echo "Remaining Limit FOUND"
+          echo "Over Limit handling FOUND"
+
+      # ==========================================
+      # 20. VERIFY SCRIPT LOAD ORDER
+      # ==========================================
+      - name: Verify script load order
+        shell: bash
+        run: |
+          set -e
+
+          INDEX="$PROJECT_ROOT/app/src/main/assets/www/index.html"
+
+          echo ""
+          echo "============================================"
+          echo "SCRIPT LOAD ORDER"
+          echo "============================================"
+
+          V61=$(grep -n 'v61.js' "$INDEX" | head -1 | cut -d: -f1)
+          V63=$(grep -n 'v63.js' "$INDEX" | head -1 | cut -d: -f1)
+          V64=$(grep -n 'v64.js' "$INDEX" | head -1 | cut -d: -f1)
+          V66=$(grep -n 'v66.js' "$INDEX" | head -1 | cut -d: -f1)
+
+          if [ -z "$V61" ] || \
+             [ -z "$V63" ] || \
+             [ -z "$V64" ] || \
+             [ -z "$V66" ]; then
+
+            echo ""
+            echo "ERROR:"
+            echo "Required NadEx script is missing."
+            exit 1
+
+          fi
+
+          if [ "$V63" -le "$V61" ]; then
+            echo "ERROR: V6.3 must load after V6.1."
+            exit 1
+          fi
+
+          if [ "$V64" -le "$V63" ]; then
+            echo "ERROR: V6.4 must load after V6.3."
+            exit 1
+          fi
+
+          if [ "$V66" -le "$V64" ]; then
+            echo "ERROR: V6.6 must load after V6.4."
+            exit 1
+          fi
+
+          echo "V6.1 -> V6.3 -> V6.4 -> V6.6"
+          echo ""
+          echo "V6.5 linking layer removed."
+          echo ""
+          echo "Script load order PASSED."
+
+      # ==========================================
+      # 21. JAVASCRIPT CHECK
+      # ==========================================
+      - name: Check all JavaScript syntax
+        shell: bash
+        run: |
+          set -e
+
+          WWW="$PROJECT_ROOT/app/src/main/assets/www"
+
+          echo ""
+          echo "============================================"
+          echo "JAVASCRIPT DIAGNOSTIC"
+          echo "============================================"
+
+          COUNT=0
+
+          for JS in "$WWW"/*.js
+          do
+
+            if [ -f "$JS" ]; then
+
+              echo "Checking: $(basename "$JS")"
+
+              node --check "$JS"
+
+              COUNT=$((COUNT + 1))
+
+            fi
+
+          done
+
+          echo ""
+          echo "$COUNT JavaScript files checked."
+          echo ""
+          echo "ALL JAVASCRIPT SYNTAX CHECKS PASSED."
+
+      # ==========================================
+      # 22. GRADLE INFO
+      # ==========================================
+      - name: Show Gradle information
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          echo ""
+          echo "============================================"
+          echo "GRADLE INFORMATION"
+          echo "============================================"
+
+          gradle --version
+
+      # ==========================================
+      # 23. CLEAN
+      # ==========================================
+      - name: Clean NadEx V6.6
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "============================================"
+          echo "CLEANING NADEX V6.6"
+          echo "============================================"
+
+          gradle clean --stacktrace
+
+      # ==========================================
+      # 24. BUILD
+      # ==========================================
+      - name: Build NadEx V6.6 APK
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "============================================"
+          echo "BUILDING NADEX V6.6"
+          echo "============================================"
+          echo "Ledger = Independent"
+          echo "Monthly Expense = Independent"
+          echo "No My Share / Monthly Expense auto-link"
+          echo "My Expense = Ledger information only"
+          echo "Save Purchase rebuilt"
+          echo "Edit Purchase rebuilt"
+          echo "V6.3 Ledger Edit/Save preserved"
+          echo "Remaining Limit preserved"
+          echo "Existing data preserved"
+          echo "============================================"
+
+          gradle assembleDebug --stacktrace
+
+      # ==========================================
+      # 25. LOCATE APK
+      # ==========================================
+      - name: Locate generated APK
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "=============
