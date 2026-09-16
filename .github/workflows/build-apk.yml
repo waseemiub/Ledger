@@ -1,0 +1,632 @@
+name: Build NadEx V6.3 Edit Update Rebuild
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'NadEx_Android_V6_3_EDIT_UPDATE_REBUILD.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    name: Build NadEx V6.3 APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ==========================================
+      # 1. CHECKOUT
+      # ==========================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ==========================================
+      # 2. JAVA 17
+      # ==========================================
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ==========================================
+      # 3. GRADLE 8.9
+      # ==========================================
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      # ==========================================
+      # 4. VERIFY EXACT ZIP
+      # ==========================================
+      - name: Verify NadEx V6.3 ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP="NadEx_Android_V6_3_EDIT_UPDATE_REBUILD.zip"
+
+          echo "========================================"
+          echo "NADEX V6.3"
+          echo "EDIT / UPDATE REBUILD"
+          echo "========================================"
+
+          echo ""
+          echo "Repository contents:"
+          ls -lah
+
+          if [ ! -f "$ZIP" ]; then
+            echo ""
+            echo "ERROR: ZIP package not found."
+            echo ""
+            echo "Required exact filename:"
+            echo "$ZIP"
+            exit 1
+          fi
+
+          echo ""
+          echo "ZIP FOUND:"
+          ls -lh "$ZIP"
+
+          echo ""
+          echo "Testing ZIP integrity..."
+          unzip -t "$ZIP"
+
+          echo ""
+          echo "ZIP integrity PASSED."
+
+      # ==========================================
+      # 5. EXTRACT PACKAGE
+      # ==========================================
+      - name: Extract NadEx V6.3
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf extracted
+          mkdir -p extracted
+
+          unzip -q \
+            NadEx_Android_V6_3_EDIT_UPDATE_REBUILD.zip \
+            -d extracted
+
+          echo ""
+          echo "========================================"
+          echo "EXTRACTED PACKAGE"
+          echo "========================================"
+
+          find extracted \
+            -maxdepth 7 \
+            -type f \
+            | sort \
+            | head -400
+
+      # ==========================================
+      # 6. DETECT ANDROID PROJECT
+      # ==========================================
+      - name: Detect Android project root
+        shell: bash
+        run: |
+          set -e
+
+          EXPECTED="extracted/NadEx_Android_V6_3_EDIT_UPDATE_REBUILD"
+
+          if [ -f "$EXPECTED/settings.gradle.kts" ]; then
+
+            PROJECT_ROOT="$EXPECTED"
+
+          elif [ -f "extracted/settings.gradle.kts" ]; then
+
+            PROJECT_ROOT="extracted"
+
+          else
+
+            SETTINGS=$(find extracted \
+              -type f \
+              \( -name "settings.gradle.kts" -o -name "settings.gradle" \) \
+              | head -1 || true)
+
+            if [ -z "$SETTINGS" ]; then
+              echo ""
+              echo "ERROR:"
+              echo "Android project could not be located."
+              echo ""
+
+              find extracted \
+                -maxdepth 7 \
+                -type d \
+                | sort
+
+              exit 1
+            fi
+
+            PROJECT_ROOT=$(dirname "$SETTINGS")
+
+          fi
+
+          echo ""
+          echo "========================================"
+          echo "ANDROID PROJECT ROOT"
+          echo "========================================"
+          echo "$PROJECT_ROOT"
+
+          echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
+
+      # ==========================================
+      # 7. VERIFY PROJECT STRUCTURE
+      # ==========================================
+      - name: Verify Android project
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "========================================"
+          echo "PROJECT STRUCTURE CHECK"
+          echo "========================================"
+
+          test -f "$PROJECT_ROOT/settings.gradle.kts"
+          test -f "$PROJECT_ROOT/build.gradle.kts"
+          test -f "$PROJECT_ROOT/app/build.gradle.kts"
+          test -f "$PROJECT_ROOT/app/src/main/AndroidManifest.xml"
+
+          echo "settings.gradle.kts FOUND"
+          echo "build.gradle.kts FOUND"
+          echo "app/build.gradle.kts FOUND"
+          echo "AndroidManifest.xml FOUND"
+
+      # ==========================================
+      # 8. VERIFY APPLICATION ID
+      # ==========================================
+      - name: Verify NadEx application ID
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/build.gradle.kts"
+
+          echo ""
+          echo "========================================"
+          echo "APPLICATION ID CHECK"
+          echo "========================================"
+
+          if ! grep -q 'applicationId = "ae.transactor.app"' "$FILE"; then
+            echo ""
+            echo "ERROR:"
+            echo "Expected applicationId not found."
+            echo ""
+            cat "$FILE"
+            exit 1
+          fi
+
+          echo "Application ID:"
+          echo "ae.transactor.app"
+
+          echo ""
+          echo "Existing NadEx installation remains update-compatible."
+
+      # ==========================================
+      # 9. VERIFY VERSION
+      # ==========================================
+      - name: Verify NadEx V6.3
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/build.gradle.kts"
+
+          echo ""
+          echo "========================================"
+          echo "VERSION CHECK"
+          echo "========================================"
+
+          if ! grep -q 'versionCode = 63' "$FILE"; then
+            echo ""
+            echo "ERROR:"
+            echo "versionCode 63 not found."
+            echo ""
+            cat "$FILE"
+            exit 1
+          fi
+
+          if ! grep -q 'versionName = "6.3"' "$FILE"; then
+            echo ""
+            echo "ERROR:"
+            echo "versionName 6.3 not found."
+            echo ""
+            cat "$FILE"
+            exit 1
+          fi
+
+          echo "versionCode = 63"
+          echo "versionName = 6.3"
+
+          echo ""
+          echo "Version check PASSED."
+
+      # ==========================================
+      # 10. VERIFY WEB APP
+      # ==========================================
+      - name: Verify NadEx web application
+        shell: bash
+        run: |
+          set -e
+
+          WWW="$PROJECT_ROOT/app/src/main/assets/www"
+
+          echo ""
+          echo "========================================"
+          echo "WEB APP CHECK"
+          echo "========================================"
+
+          test -d "$WWW"
+          test -f "$WWW/index.html"
+          test -f "$WWW/app.js"
+          test -f "$WWW/v61.js"
+          test -f "$WWW/v63.js"
+
+          echo "index.html FOUND"
+          echo "app.js FOUND"
+          echo "V6.1 minimal transaction engine FOUND"
+          echo "V6.3 edit/update controller FOUND"
+
+      # ==========================================
+      # 11. ENSURE OLD V6.2 OVERRIDE IS REMOVED
+      # ==========================================
+      - name: Verify old V6.2 override removed
+        shell: bash
+        run: |
+          set -e
+
+          WWW="$PROJECT_ROOT/app/src/main/assets/www"
+          INDEX="$WWW/index.html"
+
+          echo ""
+          echo "========================================"
+          echo "OLD EDIT OVERRIDE CHECK"
+          echo "========================================"
+
+          if grep -q 'v62.js' "$INDEX"; then
+            echo ""
+            echo "ERROR:"
+            echo "index.html still loads v62.js."
+            exit 1
+          fi
+
+          if [ -f "$WWW/v62.js" ]; then
+            echo ""
+            echo "ERROR:"
+            echo "Competing v62.js file still exists."
+            exit 1
+          fi
+
+          echo "V6.2 competing edit override REMOVED."
+
+      # ==========================================
+      # 12. VERIFY V6.3 LOAD ORDER
+      # ==========================================
+      - name: Verify V6.3 final load order
+        shell: bash
+        run: |
+          set -e
+
+          INDEX="$PROJECT_ROOT/app/src/main/assets/www/index.html"
+
+          echo ""
+          echo "========================================"
+          echo "V6.3 LOAD ORDER CHECK"
+          echo "========================================"
+
+          V61_POS=$(grep -bo 'v61.js' "$INDEX" | head -1 | cut -d: -f1)
+          V63_POS=$(grep -bo 'v63.js' "$INDEX" | head -1 | cut -d: -f1)
+
+          if [ -z "$V61_POS" ] || [ -z "$V63_POS" ]; then
+            echo "ERROR:"
+            echo "Required V6.1 or V6.3 script reference missing."
+            exit 1
+          fi
+
+          if [ "$V63_POS" -le "$V61_POS" ]; then
+            echo "ERROR:"
+            echo "V6.3 is not loading after V6.1."
+            exit 1
+          fi
+
+          echo "V6.1 loads first."
+          echo "V6.3 loads afterwards."
+          echo ""
+          echo "Final edit controller load order PASSED."
+
+      # ==========================================
+      # 13. VERIFY EDIT CONTROLLER
+      # ==========================================
+      - name: Verify Edit Save controller
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v63.js"
+
+          echo ""
+          echo "========================================"
+          echo "EDIT / SAVE CONTROLLER CHECK"
+          echo "========================================"
+
+          grep -q "transactionActions" "$FILE"
+          grep -q "v63Save" "$FILE"
+          grep -q "SAVE CHANGES" "$FILE"
+          grep -q "addEventListener('click'" "$FILE"
+          grep -q "localStorage.setItem" "$FILE"
+          grep -q "Storage verification failed" "$FILE"
+
+          echo "Transaction action controller FOUND"
+          echo "Save button FOUND"
+          echo "SAVE CHANGES handler FOUND"
+          echo "Click listener FOUND"
+          echo "Storage write FOUND"
+          echo "Post-save verification FOUND"
+
+          echo ""
+          echo "Edit/Save controller verified."
+
+      # ==========================================
+      # 14. VERIFY LINKED TRANSACTION LOGIC
+      # ==========================================
+      - name: Verify linked transaction updates
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v63.js"
+
+          echo ""
+          echo "========================================"
+          echo "LINKED TRANSACTION CHECK"
+          echo "========================================"
+
+          grep -q "transferId" "$FILE"
+          grep -q "movementId" "$FILE"
+
+          echo "Legacy transferId synchronization FOUND"
+          echo "V6.1 movementId synchronization FOUND"
+
+          echo ""
+          echo "Linked transaction handling verified."
+
+      # ==========================================
+      # 15. VERIFY MINIMAL TRANSACTION ENTRY
+      # ==========================================
+      - name: Verify V6.1 minimal transaction entry
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v61.js"
+
+          echo ""
+          echo "========================================"
+          echo "MINIMAL ENTRY CHECK"
+          echo "========================================"
+
+          grep -q "nxAmount" "$FILE"
+          grep -q "nxWithdraw" "$FILE"
+          grep -q "nxDeposit" "$FILE"
+          grep -q "nxPrimary" "$FILE"
+          grep -q "nxOther" "$FILE"
+          grep -q "saveUniversal" "$FILE"
+
+          echo "Amount field FOUND"
+          echo "Withdraw FOUND"
+          echo "Deposit FOUND"
+          echo "From / Into FOUND"
+          echo "Paid To / Received From FOUND"
+          echo "Universal transaction logic FOUND"
+
+          echo ""
+          echo "V6.1 minimal transaction system preserved."
+
+      # ==========================================
+      # 16. VERIFY NUMBERS ONLY
+      # ==========================================
+      - name: Verify numbers-only configuration
+        shell: bash
+        run: |
+          set -e
+
+          INDEX="$PROJECT_ROOT/app/src/main/assets/www/index.html"
+
+          echo ""
+          echo "========================================"
+          echo "NUMBERS-ONLY CHECK"
+          echo "========================================"
+
+          if grep -q 'id="currencySettings"' "$INDEX"; then
+            echo ""
+            echo "ERROR:"
+            echo "Currency settings control was restored."
+            exit 1
+          fi
+
+          echo "Currency settings remain REMOVED."
+          echo "Numbers-only design preserved."
+
+      # ==========================================
+      # 17. JAVASCRIPT DIAGNOSTIC
+      # ==========================================
+      - name: Check all JavaScript syntax
+        shell: bash
+        run: |
+          set -e
+
+          WWW="$PROJECT_ROOT/app/src/main/assets/www"
+
+          echo ""
+          echo "========================================"
+          echo "JAVASCRIPT DIAGNOSTIC"
+          echo "========================================"
+
+          COUNT=0
+
+          for JS in "$WWW"/*.js
+          do
+            if [ -f "$JS" ]; then
+              echo "Checking: $(basename "$JS")"
+
+              node --check "$JS"
+
+              COUNT=$((COUNT + 1))
+            fi
+          done
+
+          echo ""
+          echo "$COUNT JavaScript files checked."
+
+          echo ""
+          echo "ALL JAVASCRIPT SYNTAX CHECKS PASSED."
+
+      # ==========================================
+      # 18. GRADLE INFORMATION
+      # ==========================================
+      - name: Show Gradle information
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          echo ""
+          echo "========================================"
+          echo "GRADLE INFORMATION"
+          echo "========================================"
+
+          gradle --version
+
+      # ==========================================
+      # 19. CLEAN BUILD
+      # ==========================================
+      - name: Clean NadEx V6.3
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "========================================"
+          echo "CLEANING NADEX V6.3"
+          echo "========================================"
+
+          gradle clean --stacktrace
+
+      # ==========================================
+      # 20. BUILD APK
+      # ==========================================
+      - name: Build NadEx V6.3 APK
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "========================================"
+          echo "BUILDING NADEX V6.3"
+          echo "========================================"
+          echo "Minimal Transaction Entry"
+          echo "Numbers Only"
+          echo "No Currency Converter"
+          echo "Rebuilt Edit / Update"
+          echo "Save Verification"
+          echo "Linked Transaction Synchronization"
+          echo "Existing Data Compatible"
+          echo "========================================"
+
+          gradle assembleDebug --stacktrace
+
+      # ==========================================
+      # 21. LOCATE APK
+      # ==========================================
+      - name: Locate generated APK
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "========================================"
+          echo "LOCATING APK"
+          echo "========================================"
+
+          DEFAULT_APK="$PROJECT_ROOT/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ -f "$DEFAULT_APK" ]; then
+
+            APK="$DEFAULT_APK"
+
+          else
+
+            APK=$(find \
+              "$PROJECT_ROOT/app/build/outputs/apk" \
+              -type f \
+              -name "*.apk" \
+              | head -1 || true)
+
+          fi
+
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+
+            echo ""
+            echo "ERROR:"
+            echo "NadEx V6.3 APK was not generated."
+            echo ""
+
+            find "$PROJECT_ROOT/app/build" \
+              -maxdepth 8 \
+              -type f \
+              | sort \
+              | tail -300 || true
+
+            exit 1
+          fi
+
+          echo ""
+          echo "APK FOUND:"
+          echo "$APK"
+
+          echo ""
+          ls -lh "$APK"
+
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+
+      # ==========================================
+      # 22. PREPARE FINAL APK
+      # ==========================================
+      - name: Prepare NadEx V6.3 APK
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf release
+          mkdir -p release
+
+          cp \
+            "$APK_PATH" \
+            "release/NadEx-V6.3-Edit-Update-Rebuild.apk"
+
+          echo ""
+          echo "========================================"
+          echo "FINAL APK READY"
+          echo "========================================"
+
+          ls -lh \
+            "release/NadEx-V6.3-Edit-Update-Rebuild.apk"
+
+          echo ""
+          echo "========================================"
+          echo "NADEX V6.3 BUILD SUCCESSFUL"
+          echo "========================================"
+
+      # ==========================================
+      # 23. UPLOAD APK
+      # ==========================================
+      - name: Upload NadEx V6.3 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NadEx-V6-3-Edit-Update-Rebuild-APK
+          path: release/NadEx-V6.3-Edit-Update-Rebuild.apk
+          if-no-files-found: error
+          retention-days: 30
