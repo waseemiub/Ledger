@@ -1,0 +1,638 @@
+name: Build NadEx V6.5 Monthly Expense Link Restore
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'NadEx_Android_V6_5_MONTHLY_EXPENSE_LINK_RESTORE.zip'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build:
+    name: Build NadEx V6.5 APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # ==========================================
+      # 1. CHECKOUT
+      # ==========================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ==========================================
+      # 2. JAVA 17
+      # ==========================================
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ==========================================
+      # 3. GRADLE 8.9
+      # ==========================================
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      # ==========================================
+      # 4. VERIFY ZIP
+      # ==========================================
+      - name: Verify NadEx V6.5 ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP="NadEx_Android_V6_5_MONTHLY_EXPENSE_LINK_RESTORE.zip"
+
+          echo "=========================================="
+          echo "NADEX V6.5"
+          echo "MONTHLY EXPENSE LINK RESTORE"
+          echo "=========================================="
+
+          echo ""
+          echo "Repository files:"
+          ls -lah
+
+          if [ ! -f "$ZIP" ]; then
+            echo ""
+            echo "ERROR: ZIP package not found."
+            echo ""
+            echo "Required exact filename:"
+            echo "$ZIP"
+            exit 1
+          fi
+
+          echo ""
+          echo "ZIP FOUND:"
+          ls -lh "$ZIP"
+
+          echo ""
+          echo "Testing ZIP integrity..."
+          unzip -t "$ZIP"
+
+          echo ""
+          echo "ZIP integrity PASSED."
+
+      # ==========================================
+      # 5. EXTRACT
+      # ==========================================
+      - name: Extract NadEx V6.5
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf extracted
+          mkdir -p extracted
+
+          unzip -q \
+            NadEx_Android_V6_5_MONTHLY_EXPENSE_LINK_RESTORE.zip \
+            -d extracted
+
+          echo ""
+          echo "=========================================="
+          echo "PACKAGE EXTRACTED"
+          echo "=========================================="
+
+          find extracted \
+            -maxdepth 7 \
+            -type f \
+            | sort \
+            | head -400
+
+      # ==========================================
+      # 6. DETECT PROJECT ROOT
+      # ==========================================
+      - name: Detect Android project root
+        shell: bash
+        run: |
+          set -e
+
+          EXPECTED="extracted/NadEx_Android_V6_5_MONTHLY_EXPENSE_LINK_RESTORE"
+
+          if [ -f "$EXPECTED/settings.gradle.kts" ]; then
+
+            PROJECT_ROOT="$EXPECTED"
+
+          elif [ -f "extracted/settings.gradle.kts" ]; then
+
+            PROJECT_ROOT="extracted"
+
+          else
+
+            SETTINGS=$(find extracted \
+              -type f \
+              \( -name "settings.gradle.kts" -o -name "settings.gradle" \) \
+              | head -1 || true)
+
+            if [ -z "$SETTINGS" ]; then
+              echo ""
+              echo "ERROR:"
+              echo "Android project root could not be found."
+              echo ""
+
+              find extracted \
+                -maxdepth 7 \
+                -type d \
+                | sort
+
+              exit 1
+            fi
+
+            PROJECT_ROOT=$(dirname "$SETTINGS")
+
+          fi
+
+          echo ""
+          echo "=========================================="
+          echo "ANDROID PROJECT ROOT"
+          echo "=========================================="
+          echo "$PROJECT_ROOT"
+
+          echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
+
+      # ==========================================
+      # 7. VERIFY ANDROID PROJECT
+      # ==========================================
+      - name: Verify Android project
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "=========================================="
+          echo "ANDROID PROJECT CHECK"
+          echo "=========================================="
+
+          test -f "$PROJECT_ROOT/settings.gradle.kts"
+          test -f "$PROJECT_ROOT/build.gradle.kts"
+          test -f "$PROJECT_ROOT/app/build.gradle.kts"
+          test -f "$PROJECT_ROOT/app/src/main/AndroidManifest.xml"
+
+          echo "settings.gradle.kts FOUND"
+          echo "build.gradle.kts FOUND"
+          echo "app/build.gradle.kts FOUND"
+          echo "AndroidManifest.xml FOUND"
+
+      # ==========================================
+      # 8. VERIFY APPLICATION ID
+      # ==========================================
+      - name: Verify NadEx application ID
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/build.gradle.kts"
+
+          echo ""
+          echo "=========================================="
+          echo "APPLICATION ID CHECK"
+          echo "=========================================="
+
+          if ! grep -q 'applicationId = "ae.transactor.app"' "$FILE"; then
+            echo ""
+            echo "ERROR:"
+            echo "Expected applicationId not found."
+            echo ""
+            cat "$FILE"
+            exit 1
+          fi
+
+          echo "applicationId = ae.transactor.app"
+          echo ""
+          echo "Existing NadEx installation remains compatible."
+
+      # ==========================================
+      # 9. VERIFY VERSION 6.5
+      # ==========================================
+      - name: Verify NadEx V6.5
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/build.gradle.kts"
+
+          echo ""
+          echo "=========================================="
+          echo "VERSION CHECK"
+          echo "=========================================="
+
+          if ! grep -q 'versionCode = 65' "$FILE"; then
+            echo ""
+            echo "ERROR: versionCode 65 not found."
+            echo ""
+            cat "$FILE"
+            exit 1
+          fi
+
+          if ! grep -q 'versionName = "6.5"' "$FILE"; then
+            echo ""
+            echo "ERROR: versionName 6.5 not found."
+            echo ""
+            cat "$FILE"
+            exit 1
+          fi
+
+          echo "versionCode = 65"
+          echo "versionName = 6.5"
+          echo ""
+          echo "NadEx V6.5 verified."
+
+      # ==========================================
+      # 10. VERIFY WEB APPLICATION
+      # ==========================================
+      - name: Verify NadEx web application
+        shell: bash
+        run: |
+          set -e
+
+          WWW="$PROJECT_ROOT/app/src/main/assets/www"
+
+          echo ""
+          echo "=========================================="
+          echo "WEB APPLICATION CHECK"
+          echo "=========================================="
+
+          test -f "$WWW/index.html"
+          test -f "$WWW/app.js"
+          test -f "$WWW/v61.js"
+          test -f "$WWW/v63.js"
+          test -f "$WWW/v64.js"
+          test -f "$WWW/v65.js"
+
+          echo "index.html FOUND"
+          echo "Main app FOUND"
+          echo "V6.1 transaction engine FOUND"
+          echo "V6.3 Edit/Save controller FOUND"
+          echo "V6.4 Remaining Limit FOUND"
+          echo "V6.5 Monthly Expense restoration FOUND"
+
+      # ==========================================
+      # 11. VERIFY V6.3 EDIT/SAVE
+      # ==========================================
+      - name: Verify working Edit Save controller
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v63.js"
+
+          echo ""
+          echo "=========================================="
+          echo "EDIT / SAVE CHECK"
+          echo "=========================================="
+
+          grep -q "transactionActions" "$FILE"
+          grep -q "v63Save" "$FILE"
+          grep -q "SAVE CHANGES" "$FILE"
+          grep -q "addEventListener" "$FILE"
+          grep -q "localStorage.setItem" "$FILE"
+
+          echo "Transaction editor FOUND"
+          echo "Save Changes handler FOUND"
+          echo "Button event listener FOUND"
+          echo "Storage update FOUND"
+
+          echo ""
+          echo "Working V6.3 Edit/Save preserved."
+
+      # ==========================================
+      # 12. VERIFY V6.4 REMAINING LIMIT
+      # ==========================================
+      - name: Verify Remaining Limit
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v64.js"
+
+          echo ""
+          echo "=========================================="
+          echo "REMAINING LIMIT CHECK"
+          echo "=========================================="
+
+          grep -q "limitOf" "$FILE"
+          grep -q "REMAINING" "$FILE"
+          grep -q "OVER LIMIT" "$FILE"
+
+          echo "Existing limit reader FOUND"
+          echo "Remaining Limit FOUND"
+          echo "Over Limit handling FOUND"
+
+      # ==========================================
+      # 13. VERIFY MONTHLY EXPENSE PURCHASE BUTTON
+      # ==========================================
+      - name: Verify Monthly Expense Purchase buttons
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v65.js"
+
+          echo ""
+          echo "=========================================="
+          echo "PURCHASE BUTTON CHECK"
+          echo "=========================================="
+
+          grep -q "newPurchase" "$FILE"
+          grep -q "newPurchaseTop" "$FILE"
+          grep -q "openPurchase({})" "$FILE"
+          grep -q "bindPurchaseButtons" "$FILE"
+
+          echo "+ Buy button binding FOUND"
+          echo "+ New Purchase button binding FOUND"
+          echo "Purchase form action FOUND"
+          echo "Purchase button repair function FOUND"
+
+          echo ""
+          echo "Monthly Expense Purchase controls verified."
+
+      # ==========================================
+      # 14. VERIFY MY SHARE LINK
+      # ==========================================
+      - name: Verify My Share Monthly Expense link
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v65.js"
+
+          echo ""
+          echo "=========================================="
+          echo "MY SHARE LINK CHECK"
+          echo "=========================================="
+
+          grep -q "messStats" "$FILE"
+          grep -q "restoreMyShareCard" "$FILE"
+          grep -q "EXPENSE_KEY" "$FILE"
+          grep -q "party(EXPENSE_KEY)" "$FILE"
+          grep -q "Linked to Monthly Expense" "$FILE"
+
+          echo "Monthly Expense statistics link FOUND"
+          echo "My Share restoration FOUND"
+          echo "My Share account key FOUND"
+          echo "My Share statement link FOUND"
+          echo "Monthly Expense link indicator FOUND"
+
+          echo ""
+          echo "My Share <-> Monthly Expense link verified."
+
+      # ==========================================
+      # 15. VERIFY MY EXPENSE SHARE
+      # ==========================================
+      - name: Verify My Expense uses only My Share
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v65.js"
+
+          echo ""
+          echo "=========================================="
+          echo "MY EXPENSE CHECK"
+          echo "=========================================="
+
+          grep -q "myExpenseData" "$FILE"
+          grep -q "restoreMyExpenseCard" "$FILE"
+          grep -q "MY_EXPENSE_VIEW_KEY" "$FILE"
+
+          echo "My Expense data calculator FOUND"
+          echo "My Expense card restoration FOUND"
+          echo "My Expense statement link FOUND"
+
+          echo ""
+          echo "My Expense remains linked to user's allocated share only."
+
+      # ==========================================
+      # 16. VERIFY SCRIPT LOAD ORDER
+      # ==========================================
+      - name: Verify script load order
+        shell: bash
+        run: |
+          set -e
+
+          INDEX="$PROJECT_ROOT/app/src/main/assets/www/index.html"
+
+          echo ""
+          echo "=========================================="
+          echo "SCRIPT LOAD ORDER"
+          echo "=========================================="
+
+          V61=$(grep -n 'v61.js' "$INDEX" | head -1 | cut -d: -f1)
+          V63=$(grep -n 'v63.js' "$INDEX" | head -1 | cut -d: -f1)
+          V64=$(grep -n 'v64.js' "$INDEX" | head -1 | cut -d: -f1)
+          V65=$(grep -n 'v65.js' "$INDEX" | head -1 | cut -d: -f1)
+
+          if [ -z "$V61" ] || \
+             [ -z "$V63" ] || \
+             [ -z "$V64" ] || \
+             [ -z "$V65" ]; then
+
+            echo ""
+            echo "ERROR:"
+            echo "Required script reference missing."
+            exit 1
+          fi
+
+          if [ "$V63" -le "$V61" ]; then
+            echo "ERROR: V6.3 must load after V6.1."
+            exit 1
+          fi
+
+          if [ "$V64" -le "$V63" ]; then
+            echo "ERROR: V6.4 must load after V6.3."
+            exit 1
+          fi
+
+          if [ "$V65" -le "$V64" ]; then
+            echo "ERROR: V6.5 must load after V6.4."
+            exit 1
+          fi
+
+          echo "V6.1 -> V6.3 -> V6.4 -> V6.5"
+          echo ""
+          echo "Script load order PASSED."
+
+      # ==========================================
+      # 17. CHECK ALL JAVASCRIPT
+      # ==========================================
+      - name: Check all JavaScript syntax
+        shell: bash
+        run: |
+          set -e
+
+          WWW="$PROJECT_ROOT/app/src/main/assets/www"
+
+          echo ""
+          echo "=========================================="
+          echo "JAVASCRIPT DIAGNOSTIC"
+          echo "=========================================="
+
+          COUNT=0
+
+          for JS in "$WWW"/*.js
+          do
+            if [ -f "$JS" ]; then
+
+              echo "Checking: $(basename "$JS")"
+
+              node --check "$JS"
+
+              COUNT=$((COUNT + 1))
+
+            fi
+          done
+
+          echo ""
+          echo "$COUNT JavaScript files checked."
+          echo ""
+          echo "ALL JAVASCRIPT SYNTAX CHECKS PASSED."
+
+      # ==========================================
+      # 18. GRADLE INFORMATION
+      # ==========================================
+      - name: Show Gradle information
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "GRADLE INFORMATION"
+          echo "=========================================="
+
+          gradle --version
+
+      # ==========================================
+      # 19. CLEAN
+      # ==========================================
+      - name: Clean NadEx V6.5
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "=========================================="
+          echo "CLEANING NADEX V6.5"
+          echo "=========================================="
+
+          gradle clean --stacktrace
+
+      # ==========================================
+      # 20. BUILD APK
+      # ==========================================
+      - name: Build NadEx V6.5 APK
+        working-directory: ${{ env.PROJECT_ROOT }}
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "=========================================="
+          echo "BUILDING NADEX V6.5"
+          echo "=========================================="
+          echo "Minimal Transaction Entry"
+          echo "Numbers Only"
+          echo "Edit / Save Working"
+          echo "Remaining Limit"
+          echo "My Share <-> Monthly Expense"
+          echo "My Expense = My Share Only"
+          echo "Purchase Buttons Restored"
+          echo "Existing Data Preserved"
+          echo "=========================================="
+
+          gradle assembleDebug --stacktrace
+
+      # ==========================================
+      # 21. LOCATE APK
+      # ==========================================
+      - name: Locate generated APK
+        shell: bash
+        run: |
+          set -e
+
+          echo ""
+          echo "=========================================="
+          echo "LOCATING APK"
+          echo "=========================================="
+
+          DEFAULT_APK="$PROJECT_ROOT/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ -f "$DEFAULT_APK" ]; then
+
+            APK="$DEFAULT_APK"
+
+          else
+
+            APK=$(find \
+              "$PROJECT_ROOT/app/build/outputs/apk" \
+              -type f \
+              -name "*.apk" \
+              | head -1 || true)
+
+          fi
+
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+
+            echo ""
+            echo "ERROR:"
+            echo "NadEx V6.5 APK was not generated."
+            echo ""
+
+            find "$PROJECT_ROOT/app/build" \
+              -maxdepth 8 \
+              -type f \
+              | sort \
+              | tail -300 || true
+
+            exit 1
+          fi
+
+          echo ""
+          echo "APK FOUND:"
+          echo "$APK"
+
+          echo ""
+          ls -lh "$APK"
+
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+
+      # ==========================================
+      # 22. PREPARE FINAL APK
+      # ==========================================
+      - name: Prepare NadEx V6.5 APK
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf release
+          mkdir -p release
+
+          cp \
+            "$APK_PATH" \
+            "release/NadEx-V6.5-Monthly-Expense-Link-Restore.apk"
+
+          echo ""
+          echo "=========================================="
+          echo "FINAL APK READY"
+          echo "=========================================="
+
+          ls -lh \
+            "release/NadEx-V6.5-Monthly-Expense-Link-Restore.apk"
+
+          echo ""
+          echo "=========================================="
+          echo "NADEX V6.5 BUILD SUCCESSFUL"
+          echo "=========================================="
+
+      # ==========================================
+      # 23. UPLOAD APK
+      # ==========================================
+      - name: Upload NadEx V6.5 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NadEx-V6-5-Monthly-Expense-Link-Restore-APK
+          path: release/NadEx-V6.5-Monthly-Expense-Link-Restore.apk
+          if-no-files-found: error
+          retention-days: 30
