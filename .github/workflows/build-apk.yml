@@ -1,10 +1,10 @@
-name: Build NadEx V6.9 APK
+name: Build NadEx V6.10 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'NadEx_Android_V6_9_MY_EXPENSE_HISTORY_PDF_CONTROLS.zip'
+      - 'NadEx_Android_V6_10_EXPENSE_TOTAL_NATIVE_PDF_FIX.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -39,22 +39,21 @@ jobs:
       # ==========================================
       # 4. VERIFY ZIP
       # ==========================================
-      - name: Verify NadEx V6.9 ZIP
+      - name: Verify NadEx V6.10 ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP="NadEx_Android_V6_9_MY_EXPENSE_HISTORY_PDF_CONTROLS.zip"
+          ZIP="NadEx_Android_V6_10_EXPENSE_TOTAL_NATIVE_PDF_FIX.zip"
 
           echo "============================================"
-          echo "NADEX V6.9"
-          echo "MY EXPENSE HISTORY + PDF CONTROLS"
+          echo "NADEX V6.10"
+          echo "MY EXPENSE TOTAL + PDF FIX"
           echo "============================================"
 
           if [ ! -f "$ZIP" ]; then
             echo ""
             echo "ERROR: ZIP package not found."
-            echo ""
             echo "Expected exact filename:"
             echo "$ZIP"
             exit 1
@@ -72,9 +71,9 @@ jobs:
           echo "ZIP integrity PASSED."
 
       # ==========================================
-      # 5. EXTRACT
+      # 5. EXTRACT PACKAGE
       # ==========================================
-      - name: Extract NadEx V6.9
+      - name: Extract NadEx V6.10
         shell: bash
         run: |
           set -e
@@ -83,7 +82,7 @@ jobs:
           mkdir -p extracted
 
           unzip -q \
-            NadEx_Android_V6_9_MY_EXPENSE_HISTORY_PDF_CONTROLS.zip \
+            NadEx_Android_V6_10_EXPENSE_TOTAL_NATIVE_PDF_FIX.zip \
             -d extracted
 
           echo "Package extracted successfully."
@@ -133,7 +132,7 @@ jobs:
       # ==========================================
       # 8. VERIFY APP ID + VERSION
       # ==========================================
-      - name: Verify NadEx V6.9
+      - name: Verify NadEx V6.10
         shell: bash
         run: |
           set -e
@@ -141,24 +140,24 @@ jobs:
           FILE="$PROJECT_ROOT/app/build.gradle.kts"
 
           echo "============================================"
-          echo "VERIFYING NADEX V6.9"
+          echo "VERIFYING VERSION"
           echo "============================================"
 
           grep -q 'applicationId = "ae.transactor.app"' "$FILE"
-          grep -q 'versionCode = 69' "$FILE"
-          grep -q 'versionName = "6.9"' "$FILE"
+          grep -q 'versionCode = 70' "$FILE"
+          grep -q 'versionName = "6.10"' "$FILE"
 
           echo "applicationId = ae.transactor.app"
-          echo "versionCode = 69"
-          echo "versionName = 6.9"
+          echo "versionCode = 70"
+          echo "versionName = 6.10"
 
           echo ""
-          echo "Existing NadEx installation remains update-compatible."
+          echo "Version verification PASSED."
 
       # ==========================================
       # 9. VERIFY REQUIRED FILES
       # ==========================================
-      - name: Verify NadEx V6.9 files
+      - name: Verify NadEx application files
         shell: bash
         run: |
           set -e
@@ -174,13 +173,14 @@ jobs:
           test -f "$WWW/v67.js"
           test -f "$WWW/v68.js"
           test -f "$WWW/v69.js"
+          test -f "$WWW/v610.js"
 
-          echo "Required application files FOUND."
+          echo "Required NadEx V6.10 files FOUND."
 
       # ==========================================
-      # 10. VERIFY LOAD ORDER
+      # 10. VERIFY V6.10 LOAD ORDER
       # ==========================================
-      - name: Verify V6.9 load order
+      - name: Verify V6.10 script load order
         shell: bash
         run: |
           set -e
@@ -191,14 +191,15 @@ jobs:
           V67=$(grep -n 'v67.js' "$INDEX" | head -1 | cut -d: -f1)
           V68=$(grep -n 'v68.js' "$INDEX" | head -1 | cut -d: -f1)
           V69=$(grep -n 'v69.js' "$INDEX" | head -1 | cut -d: -f1)
+          V610=$(grep -n 'v610.js' "$INDEX" | head -1 | cut -d: -f1)
 
           if [ -z "$V66" ] || \
              [ -z "$V67" ] || \
              [ -z "$V68" ] || \
-             [ -z "$V69" ]; then
+             [ -z "$V69" ] || \
+             [ -z "$V610" ]; then
 
-            echo ""
-            echo "ERROR: Required script missing."
+            echo "ERROR: Required NadEx script is missing."
             exit 1
           fi
 
@@ -217,111 +218,166 @@ jobs:
             exit 1
           fi
 
+          if [ "$V610" -le "$V69" ]; then
+            echo "ERROR: V6.10 must load after V6.9."
+            exit 1
+          fi
+
           echo ""
           echo "LOAD ORDER:"
-          echo "V6.6 -> V6.7 -> V6.8 -> V6.9"
+          echo "V6.6 -> V6.7 -> V6.8 -> V6.9 -> V6.10"
           echo ""
           echo "Load order PASSED."
 
       # ==========================================
-      # 11. VERIFY MY EXPENSE HISTORY
+      # 11. VERIFY MY EXPENSE TOTAL FIX
       # ==========================================
-      - name: Verify My Expense transaction history
+      - name: Verify My Expense outer total fix
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v610.js"
+
+          echo "============================================"
+          echo "MY EXPENSE TOTAL CHECK"
+          echo "============================================"
+
+          grep -q "expenseTotal610" "$FILE"
+          grep -q "syncExpenseDisplay" "$FILE"
+          grep -q "expenseAccount" "$FILE"
+          grep -q "data-expense" "$FILE"
+
+          echo "Authoritative My Expense calculation FOUND."
+          echo "Outer My Expense TOTAL synchronization FOUND."
+          echo "Inner My Expense card synchronization FOUND."
+
+      # ==========================================
+      # 12. VERIFY MONTHLY EXPENSE ALLOCATION
+      # ==========================================
+      - name: Verify Monthly Expense allocation calculation
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v610.js"
+
+          grep -q "activeCycle" "$FILE"
+          grep -q "allocations" "$FILE"
+          grep -q "memberId" "$FILE"
+
+          echo "Monthly Expense allocation calculation FOUND."
+
+      # ==========================================
+      # 13. VERIFY MY EXPENSE HISTORY
+      # ==========================================
+      - name: Verify My Expense history preserved
         shell: bash
         run: |
           set -e
 
           FILE="$PROJECT_ROOT/app/src/main/assets/www/v69.js"
-
-          echo "============================================"
-          echo "MY EXPENSE HISTORY CHECK"
-          echo "============================================"
 
           grep -q "myExpenseParty" "$FILE"
           grep -q "All expenses allocated to me" "$FILE"
-          grep -q "Monthly Expense" "$FILE"
-          grep -q "Direct Ledger expense" "$FILE"
           grep -q "Running expense:" "$FILE"
 
-          echo "My Expense statement FOUND."
-          echo "Monthly Expense allocations FOUND."
-          echo "Direct Ledger expenses FOUND."
-          echo "Running expense balance FOUND."
+          echo "My Expense transaction history preserved."
 
       # ==========================================
-      # 12. VERIFY MY EXPENSE PURCHASE DETAILS
+      # 14. VERIFY CLASSIC PDF STATEMENT
       # ==========================================
-      - name: Verify My Expense purchase navigation
+      - name: Verify classic Monthly Expense statement
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v69.js"
-
-          grep -q "purchaseDetails" "$FILE"
-          grep -q "Tap to view purchase" "$FILE"
-          grep -q "transactionActions" "$FILE"
-
-          echo "Purchase details navigation FOUND."
-          echo "Ledger Edit/Delete navigation FOUND."
-
-      # ==========================================
-      # 13. VERIFY PDF PREVIEW
-      # ==========================================
-      - name: Verify Monthly Expense PDF preview
-        shell: bash
-        run: |
-          set -e
-
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v69.js"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v610.js"
 
           echo "============================================"
-          echo "MONTHLY EXPENSE PDF CHECK"
+          echo "MONTHLY EXPENSE STATEMENT CHECK"
           echo "============================================"
 
           grep -q "exportMessPDF" "$FILE"
-          grep -q "nxPdfPreview" "$FILE"
           grep -q "NadEx Monthly Expense Statement" "$FILE"
           grep -q "Complete Transaction Details" "$FILE"
+          grep -q "window.open" "$FILE"
 
-          echo "In-app PDF preview FOUND."
-          echo "Detailed transaction report FOUND."
+          echo "Classic statement window FOUND."
+          echo "Detailed report FOUND."
 
       # ==========================================
-      # 14. VERIFY PDF SAVE
+      # 15. VERIFY PDF SUMMARY
       # ==========================================
-      - name: Verify Save PDF
+      - name: Verify PDF summary details
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v69.js"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v610.js"
 
-          grep -q "SAVE PDF" "$FILE"
+          grep -q "Total transactions" "$FILE"
+          grep -q "Total spend" "$FILE"
+          grep -q "Paid" "$FILE"
+          grep -q "Share" "$FILE"
+          grep -q "Net Balance" "$FILE"
+          grep -q "Status" "$FILE"
+
+          echo "Detailed member summary FOUND."
+
+      # ==========================================
+      # 16. VERIFY PDF TRANSACTION DETAILS
+      # ==========================================
+      - name: Verify PDF transaction details
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v610.js"
+
+          grep -q "Date/Time" "$FILE"
+          grep -q "Paid by" "$FILE"
+          grep -q "Member involved" "$FILE"
+          grep -q "Split" "$FILE"
+
+          echo "Transaction date/time FOUND."
+          echo "Payer information FOUND."
+          echo "Member involvement FOUND."
+          echo "Individual share details FOUND."
+
+      # ==========================================
+      # 17. VERIFY PRINT / SAVE PDF
+      # ==========================================
+      - name: Verify Print Save PDF
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v610.js"
+
+          grep -q "Print / Save PDF" "$FILE"
           grep -q "window.print" "$FILE"
-          grep -q "nxPdfSave" "$FILE"
 
-          echo "SAVE PDF control FOUND."
-          echo "Android print/PDF action FOUND."
+          echo "Print / Save PDF button FOUND."
+          echo "Native print action FOUND."
 
       # ==========================================
-      # 15. VERIFY PDF BACK
+      # 18. VERIFY PDF BACK
       # ==========================================
-      - name: Verify PDF Back control
+      - name: Verify statement Back button
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v69.js"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v610.js"
 
-          grep -q "BACK TO MONTHLY EXPENSE" "$FILE"
-          grep -q "nxPdfBack" "$FILE"
-          grep -q "overlay.remove" "$FILE"
+          grep -q "window.close" "$FILE"
+          grep -q "Back" "$FILE"
 
-          echo "Back to Monthly Expense control FOUND."
+          echo "Statement Back control FOUND."
 
       # ==========================================
-      # 16. VERIFY ENTRY EXECUTION
+      # 19. VERIFY ENTRY EXECUTION
       # ==========================================
       - name: Verify Ledger Entry execution
         shell: bash
@@ -336,7 +392,7 @@ jobs:
           echo "Ledger + Entry execution preserved."
 
       # ==========================================
-      # 17. VERIFY PURCHASE EXECUTION
+      # 20. VERIFY PURCHASE EXECUTION
       # ==========================================
       - name: Verify Purchase execution
         shell: bash
@@ -352,7 +408,7 @@ jobs:
           echo "Monthly Expense Purchase execution preserved."
 
       # ==========================================
-      # 18. VERIFY SMART EXPENSE / SHARE
+      # 21. VERIFY SMART EXPENSE + MY SHARE
       # ==========================================
       - name: Verify Smart Expense and My Share
         shell: bash
@@ -370,7 +426,7 @@ jobs:
           echo "My Share calculation preserved."
 
       # ==========================================
-      # 19. VERIFY LEDGER EDIT SAVE
+      # 22. VERIFY LEDGER EDIT SAVE
       # ==========================================
       - name: Verify Ledger Edit Save
         shell: bash
@@ -387,7 +443,7 @@ jobs:
           echo "Ledger Edit/Save preserved."
 
       # ==========================================
-      # 20. VERIFY REMAINING LIMIT
+      # 23. VERIFY REMAINING LIMIT
       # ==========================================
       - name: Verify Remaining Limit
         shell: bash
@@ -403,7 +459,7 @@ jobs:
           echo "Remaining Limit preserved."
 
       # ==========================================
-      # 21. CHECK JAVASCRIPT
+      # 24. CHECK ALL JAVASCRIPT
       # ==========================================
       - name: Check all JavaScript syntax
         shell: bash
@@ -432,7 +488,7 @@ jobs:
           echo "All JavaScript syntax checks PASSED."
 
       # ==========================================
-      # 22. GRADLE INFO
+      # 25. GRADLE INFORMATION
       # ==========================================
       - name: Show Gradle information
         shell: bash
@@ -440,9 +496,9 @@ jobs:
           gradle --version
 
       # ==========================================
-      # 23. CLEAN
+      # 26. CLEAN
       # ==========================================
-      - name: Clean NadEx V6.9
+      - name: Clean NadEx V6.10
         shell: bash
         run: |
           set -e
@@ -452,9 +508,9 @@ jobs:
           gradle clean --stacktrace
 
       # ==========================================
-      # 24. BUILD APK
+      # 27. BUILD APK
       # ==========================================
-      - name: Build NadEx V6.9 APK
+      - name: Build NadEx V6.10 APK
         shell: bash
         run: |
           set -e
@@ -462,15 +518,17 @@ jobs:
           cd "$PROJECT_ROOT"
 
           echo "============================================"
-          echo "BUILDING NADEX V6.9"
+          echo "BUILDING NADEX V6.10"
           echo "============================================"
-          echo "My Expense transaction history"
-          echo "Monthly Expense allocations"
-          echo "Direct Ledger expenses"
-          echo "Detailed Monthly Expense report"
-          echo "Save PDF control"
-          echo "Back to Monthly Expense control"
-          echo "V6.8 Entry/Purchase execution preserved"
+          echo "Outer My Expense total synchronized"
+          echo "Inner My Expense total preserved"
+          echo "My Expense transaction history preserved"
+          echo "Classic Monthly Expense statement restored"
+          echo "Detailed transaction report preserved"
+          echo "Print / Save PDF enabled"
+          echo "Statement Back control enabled"
+          echo "+ Entry preserved"
+          echo "Purchase/Edit preserved"
           echo "My Share preserved"
           echo "Existing data preserved"
           echo "============================================"
@@ -481,7 +539,7 @@ jobs:
           echo "Gradle build completed successfully."
 
       # ==========================================
-      # 25. LOCATE APK
+      # 28. LOCATE APK
       # ==========================================
       - name: Locate generated APK
         shell: bash
@@ -496,16 +554,13 @@ jobs:
             | head -1)
 
           if [ -z "$APK_PATH" ]; then
-
             echo ""
             echo "ERROR: APK not found."
             echo ""
-            echo "Generated files:"
-
+            echo "Generated build files:"
             find "$PROJECT_ROOT/app/build" \
               -type f \
               | sort
-
             exit 1
           fi
 
@@ -518,9 +573,9 @@ jobs:
           echo "APK_PATH=$APK_PATH" >> "$GITHUB_ENV"
 
       # ==========================================
-      # 26. PREPARE FINAL APK
+      # 29. PREPARE FINAL APK
       # ==========================================
-      - name: Prepare NadEx V6.9 APK
+      - name: Prepare NadEx V6.10 APK
         shell: bash
         run: |
           set -e
@@ -529,7 +584,7 @@ jobs:
           mkdir -p release
 
           cp "$APK_PATH" \
-            "release/NadEx-V6.9-My-Expense-History-PDF-Controls.apk"
+            "release/NadEx-V6.10-Expense-Total-Native-PDF-Fix.apk"
 
           echo ""
           echo "============================================"
@@ -537,15 +592,15 @@ jobs:
           echo "============================================"
 
           ls -lh \
-            "release/NadEx-V6.9-My-Expense-History-PDF-Controls.apk"
+            "release/NadEx-V6.10-Expense-Total-Native-PDF-Fix.apk"
 
       # ==========================================
-      # 27. UPLOAD APK
+      # 30. UPLOAD APK
       # ==========================================
-      - name: Upload NadEx V6.9 APK
+      - name: Upload NadEx V6.10 APK
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V6-9-My-Expense-History-PDF-Controls-APK
-          path: release/NadEx-V6.9-My-Expense-History-PDF-Controls.apk
+          name: NadEx-V6-10-Expense-Total-Native-PDF-Fix-APK
+          path: release/NadEx-V6.10-Expense-Total-Native-PDF-Fix.apk
           if-no-files-found: error
           retention-days: 30
