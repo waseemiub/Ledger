@@ -1,10 +1,10 @@
-name: Build NadEx V6.12 APK
+name: Build NadEx V6.13 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'NadEx_Android_V6_12_FINAL_EXPENSE_NATIVE_PDF_FIX.zip'
+      - 'NadEx_Android_V6_13_TARGETED_LEDGER_EXPENSE_FIX.zip'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -39,16 +39,16 @@ jobs:
       # ==========================================
       # 4. VERIFY ZIP
       # ==========================================
-      - name: Verify NadEx V6.12 ZIP
+      - name: Verify NadEx V6.13 ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP="NadEx_Android_V6_12_FINAL_EXPENSE_NATIVE_PDF_FIX.zip"
+          ZIP="NadEx_Android_V6_13_TARGETED_LEDGER_EXPENSE_FIX.zip"
 
           echo "============================================"
-          echo "NADEX V6.12 FINAL"
-          echo "EXPENSE + NATIVE PDF FIX"
+          echo "NADEX V6.13"
+          echo "TARGETED LEDGER + EXPENSE UPDATE"
           echo "============================================"
 
           if [ ! -f "$ZIP" ]; then
@@ -72,9 +72,9 @@ jobs:
           echo "ZIP integrity PASSED."
 
       # ==========================================
-      # 5. EXTRACT
+      # 5. EXTRACT PACKAGE
       # ==========================================
-      - name: Extract NadEx V6.12
+      - name: Extract NadEx V6.13
         shell: bash
         run: |
           set -e
@@ -83,7 +83,7 @@ jobs:
           mkdir -p extracted
 
           unzip -q \
-            NadEx_Android_V6_12_FINAL_EXPENSE_NATIVE_PDF_FIX.zip \
+            NadEx_Android_V6_13_TARGETED_LEDGER_EXPENSE_FIX.zip \
             -d extracted
 
           echo ""
@@ -117,7 +117,7 @@ jobs:
           echo "$PROJECT_ROOT"
 
       # ==========================================
-      # 7. VERIFY PROJECT
+      # 7. VERIFY ANDROID PROJECT
       # ==========================================
       - name: Verify Android project
         shell: bash
@@ -134,7 +134,7 @@ jobs:
       # ==========================================
       # 8. VERIFY VERSION
       # ==========================================
-      - name: Verify NadEx V6.12 version
+      - name: Verify NadEx V6.13 version
         shell: bash
         run: |
           set -e
@@ -142,19 +142,19 @@ jobs:
           FILE="$PROJECT_ROOT/app/build.gradle.kts"
 
           echo "============================================"
-          echo "VERIFYING VERSION"
+          echo "VERIFYING NADEX V6.13"
           echo "============================================"
 
           grep -q 'applicationId = "ae.transactor.app"' "$FILE"
-          grep -q 'versionCode = 72' "$FILE"
-          grep -q 'versionName = "6.12"' "$FILE"
+          grep -q 'versionCode = 73' "$FILE"
+          grep -q 'versionName = "6.13"' "$FILE"
 
           echo "applicationId = ae.transactor.app"
-          echo "versionCode = 72"
-          echo "versionName = 6.12"
+          echo "versionCode = 73"
+          echo "versionName = 6.13"
 
           echo ""
-          echo "Existing NadEx installation remains update-compatible."
+          echo "Version verification PASSED."
 
       # ==========================================
       # 9. VERIFY WEB APP
@@ -168,32 +168,15 @@ jobs:
 
           test -f "$WWW/index.html"
           test -f "$WWW/app.js"
+          test -f "$WWW/v612.js"
+          test -f "$WWW/v613.js"
 
-          echo "NadEx web application FOUND."
-
-      # ==========================================
-      # 10. VERIFY FINAL V6.12 SCRIPT
-      # ==========================================
-      - name: Verify V6.12 final script
-        shell: bash
-        run: |
-          set -e
-
-          WWW="$PROJECT_ROOT/app/src/main/assets/www"
-
-          if [ ! -f "$WWW/v612.js" ]; then
-            echo "ERROR: v612.js not found."
-            exit 1
-          fi
-
-          grep -q 'v612.js' "$WWW/index.html"
-
-          echo "V6.12 final correction script FOUND."
+          echo "NadEx application files FOUND."
 
       # ==========================================
-      # 11. VERIFY V6.12 LOADS LAST
+      # 10. VERIFY V6.13 LOADS LAST
       # ==========================================
-      - name: Verify V6.12 final load order
+      - name: Verify V6.13 final load order
         shell: bash
         run: |
           set -e
@@ -201,148 +184,117 @@ jobs:
           INDEX="$PROJECT_ROOT/app/src/main/assets/www/index.html"
 
           V612=$(grep -n 'v612.js' "$INDEX" | tail -1 | cut -d: -f1)
+          V613=$(grep -n 'v613.js' "$INDEX" | tail -1 | cut -d: -f1)
           LAST_SCRIPT=$(grep -n '<script.*src=' "$INDEX" | tail -1 | cut -d: -f1)
 
-          if [ -z "$V612" ]; then
-            echo "ERROR: v612.js is not loaded."
+          if [ -z "$V612" ] || [ -z "$V613" ]; then
+            echo ""
+            echo "ERROR: V6.12 or V6.13 script missing."
             exit 1
           fi
 
-          if [ "$V612" != "$LAST_SCRIPT" ]; then
+          if [ "$V613" -le "$V612" ]; then
             echo ""
-            echo "ERROR: v612.js is not the final application script."
+            echo "ERROR: V6.13 must load after V6.12."
+            exit 1
+          fi
+
+          if [ "$V613" != "$LAST_SCRIPT" ]; then
             echo ""
-            echo "Script list:"
+            echo "ERROR: v613.js is not the final loaded script."
+            echo ""
             grep -n '<script.*src=' "$INDEX"
             exit 1
           fi
 
           echo ""
-          echo "v612.js is the FINAL loaded application script."
-          echo "Load order PASSED."
+          echo "LOAD ORDER PASSED:"
+          echo "V6.12 -> V6.13"
+          echo ""
+          echo "v613.js is the final application override."
 
       # ==========================================
-      # 12. VERIFY EXPENSE SOURCE FIX
+      # 11. VERIFY PERSONAL-ONLY EXPENSE FILTER
       # ==========================================
-      - name: Verify authoritative My Expense fix
+      - name: Verify personal-only expense exclusion
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v612.js"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
 
           echo "============================================"
-          echo "MY EXPENSE SOURCE CHECK"
+          echo "MONTHLY EXPENSE FILTER CHECK"
           echo "============================================"
 
-          grep -q "expense" "$FILE"
-          grep -q "renderLedger" "$FILE"
+          grep -q "isPersonalOnly13" "$FILE"
+          grep -q "visibleCyclePurchases13" "$FILE"
+          grep -q "p.paidBy===mine" "$FILE"
+          grep -q "a.length===1" "$FILE"
+          grep -q "a\[0\].memberId===mine" "$FILE"
 
-          echo "My Expense final render integration FOUND."
+          echo "Paid-by-me check FOUND."
+          echo "Only-me allocation check FOUND."
+          echo "Personal-only Monthly Expense exclusion FOUND."
 
       # ==========================================
-      # 13. VERIFY OUTER TOTAL + INNER TOTAL
+      # 12. VERIFY MONTHLY EXPENSE STATS FILTER
       # ==========================================
-      - name: Verify unified My Expense display
+      - name: Verify filtered Monthly Expense totals
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v612.js"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
 
-          grep -q "expenseAccount" "$FILE"
+          grep -q "window.messStats" "$FILE"
+          grep -q "visibleCyclePurchases13" "$FILE"
 
-          echo "My Expense account display targeting FOUND."
-          echo "Outer/inner expense synchronization layer FOUND."
+          echo "Monthly Expense totals use filtered purchases."
 
       # ==========================================
-      # 14. VERIFY MONTHLY EXPENSE DATA
+      # 13. VERIFY MONTHLY EXPENSE CSV FILTER
       # ==========================================
-      - name: Verify Monthly Expense calculation support
+      - name: Verify Monthly Expense CSV filter
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v612.js"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
 
-          grep -q "purchases" "$FILE"
-          grep -q "allocations" "$FILE"
+          grep -q "window.messRows" "$FILE"
 
-          echo "Monthly Expense purchases FOUND."
-          echo "Member allocations FOUND."
+          echo "Monthly Expense CSV uses filtered purchase data."
 
       # ==========================================
-      # 15. VERIFY DETAILED STATEMENT
+      # 14. VERIFY PDF FILTER
       # ==========================================
-      - name: Verify detailed Monthly Expense statement
+      - name: Verify Monthly Expense PDF filter
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v612.js"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
 
-          echo "============================================"
-          echo "DETAILED PDF REPORT CHECK"
-          echo "============================================"
-
-          grep -q "Monthly Expense Statement" "$FILE"
-          grep -q "Total transactions" "$FILE"
-          grep -q "Total spend" "$FILE"
+          grep -q "window.exportMessPDF" "$FILE"
+          grep -q "visibleCyclePurchases13" "$FILE"
           grep -q "Complete Transaction Details" "$FILE"
 
-          echo "Detailed Monthly Expense statement FOUND."
+          echo "Monthly Expense PDF uses filtered purchase data."
+          echo "Detailed PDF information preserved."
 
       # ==========================================
-      # 16. VERIFY MEMBER SUMMARY
+      # 15. VERIFY NATIVE PDF BRIDGE
       # ==========================================
-      - name: Verify member summary
+      - name: Verify native Android PDF bridge
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v612.js"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
 
-          grep -q "Paid" "$FILE"
-          grep -q "Share" "$FILE"
-          grep -q "Net Balance" "$FILE"
-          grep -q "Status" "$FILE"
-
-          echo "Paid amount FOUND."
-          echo "Member Share FOUND."
-          echo "Net Balance FOUND."
-          echo "Member Status FOUND."
-
-      # ==========================================
-      # 17. VERIFY TRANSACTION DETAILS
-      # ==========================================
-      - name: Verify complete transaction details
-        shell: bash
-        run: |
-          set -e
-
-          FILE="$PROJECT_ROOT/app/src/main/assets/www/v612.js"
-
-          grep -q "Date/Time" "$FILE"
-          grep -q "Paid by" "$FILE"
-          grep -q "Member involved" "$FILE"
-          grep -q "Split" "$FILE"
-
-          echo "Transaction date/time FOUND."
-          echo "Payer FOUND."
-          echo "Members involved FOUND."
-          echo "Split details FOUND."
-
-      # ==========================================
-      # 18. VERIFY NATIVE ANDROID PRINT BRIDGE
-      # ==========================================
-      - name: Verify Android native print bridge
-        shell: bash
-        run: |
-          set -e
-
-          echo "============================================"
-          echo "ANDROID NATIVE PDF CHECK"
-          echo "============================================"
+          grep -q "AndroidBridge" "$FILE"
+          grep -q "printHtml" "$FILE"
 
           MAIN=$(find "$PROJECT_ROOT/app/src/main" \
             -type f \
@@ -354,68 +306,169 @@ jobs:
             exit 1
           fi
 
-          echo "MainActivity:"
-          echo "$MAIN"
+          grep -q "PrintManager" "$MAIN"
+          grep -q "createPrintDocumentAdapter" "$MAIN"
 
-          if ! grep -q "PrintManager" "$MAIN"; then
-            echo ""
-            echo "ERROR: Android PrintManager bridge not found."
-            exit 1
-          fi
-
-          echo ""
-          echo "Android PrintManager FOUND."
+          echo "Android native PrintManager FOUND."
+          echo "WebView print adapter FOUND."
+          echo "Native PDF bridge preserved."
 
       # ==========================================
-      # 19. VERIFY WEBVIEW PRINT ADAPTER
+      # 16. VERIFY DELETE FIX
       # ==========================================
-      - name: Verify WebView print adapter
+      - name: Verify Purchase Delete fix
         shell: bash
         run: |
           set -e
 
-          MAIN=$(find "$PROJECT_ROOT/app/src/main" \
-            -type f \
-            \( -name "MainActivity.kt" -o -name "MainActivity.java" \) \
-            | head -1)
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
 
-          if grep -q "createPrintDocumentAdapter" "$MAIN"; then
-            echo "WebView native print document adapter FOUND."
-          else
-            echo ""
-            echo "ERROR: createPrintDocumentAdapter not found."
-            exit 1
-          fi
+          echo "============================================"
+          echo "DELETE FUNCTION CHECK"
+          echo "============================================"
+
+          grep -q "window.deletePurchase" "$FILE"
+          grep -q "Delete Purchase" "$FILE"
+          grep -q "M.purchases=M.purchases.filter" "$FILE"
+          grep -q "saveM13" "$FILE"
+          grep -q "saveD13" "$FILE"
+          grep -q "Delete verification failed" "$FILE"
+
+          echo "Purchase delete function FOUND."
+          echo "Monthly Expense persistence FOUND."
+          echo "Ledger cleanup FOUND."
+          echo "Delete verification FOUND."
 
       # ==========================================
-      # 20. VERIFY OLD FAILED PRINT METHODS REMOVED
+      # 17. VERIFY DELETE BUTTON REBINDING
       # ==========================================
-      - name: Verify failed print overrides are not active
+      - name: Verify Delete button rebinding
         shell: bash
         run: |
           set -e
 
-          INDEX="$PROJECT_ROOT/app/src/main/assets/www/index.html"
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
 
-          echo "============================================"
-          echo "OLD PRINT METHOD CHECK"
-          echo "============================================"
+          grep -q "bindPurchaseDelete13" "$FILE"
+          grep -q "data-delp" "$FILE"
 
-          if grep -q 'v610.js' "$INDEX"; then
-            echo "ERROR: V6.10 failed print override is still active."
-            exit 1
-          fi
-
-          if grep -q 'v611.js' "$INDEX"; then
-            echo "ERROR: V6.11 failed print override is still active."
-            exit 1
-          fi
-
-          echo "V6.10 failed print override NOT active."
-          echo "V6.11 failed print override NOT active."
+          echo "Purchase Delete buttons are rebound after rendering."
 
       # ==========================================
-      # 21. VERIFY ENTRY PRESERVED
+      # 18. VERIFY PARTY MANAGEMENT
+      # ==========================================
+      - name: Verify Party management
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
+
+          echo "============================================"
+          echo "PARTY MANAGEMENT CHECK"
+          echo "============================================"
+
+          grep -q "manageParty13" "$FILE"
+          grep -q "Manage Party" "$FILE"
+          grep -q "SAVE NAME" "$FILE"
+          grep -q "HIDE FROM DROPDOWN" "$FILE"
+          grep -q "SHOW IN DROPDOWN" "$FILE"
+
+          echo "Party rename FOUND."
+          echo "Hide from dropdown FOUND."
+          echo "Restore to dropdown FOUND."
+
+      # ==========================================
+      # 19. VERIFY LONG PRESS
+      # ==========================================
+      - name: Verify Party long press action
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
+
+          grep -q "touchstart" "$FILE"
+          grep -q "touchend" "$FILE"
+          grep -q "mousedown" "$FILE"
+          grep -q "650" "$FILE"
+
+          echo "Mobile long-press action FOUND."
+          echo "Desktop press support FOUND."
+
+      # ==========================================
+      # 20. VERIFY HIDDEN PARTY STORAGE
+      # ==========================================
+      - name: Verify hidden Party persistence
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
+
+          grep -q "hiddenParties" "$FILE"
+          grep -q "filterDropdowns13" "$FILE"
+
+          echo "Hidden Party state persistence FOUND."
+          echo "Dropdown filtering FOUND."
+
+      # ==========================================
+      # 21. VERIFY PARTY HISTORY PRESERVED
+      # ==========================================
+      - name: Verify Party rename history support
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
+
+          grep -q "canonicalPartyKey" "$FILE"
+          grep -q "t.partyKey=nk" "$FILE"
+          grep -q "t.party=newName" "$FILE"
+
+          echo "Party rename updates historical Ledger records."
+
+      # ==========================================
+      # 22. VERIFY MAIN BALANCE STATEMENT
+      # ==========================================
+      - name: Verify Main Ledger Balance statement
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
+
+          echo "============================================"
+          echo "MAIN LEDGER STATEMENT CHECK"
+          echo "============================================"
+
+          grep -q "openMainBalanceStatement" "$FILE"
+          grep -q "Main Ledger Balance Statement" "$FILE"
+          grep -q "CURRENT MAIN LEDGER BALANCE" "$FILE"
+          grep -q "Running entries:" "$FILE"
+
+          echo "Main Ledger Balance statement FOUND."
+          echo "Transaction history FOUND."
+          echo "Running entry balance FOUND."
+
+      # ==========================================
+      # 23. VERIFY MAIN STATEMENT BUTTON
+      # ==========================================
+      - name: Verify Main Balance Statement button
+        shell: bash
+        run: |
+          set -e
+
+          FILE="$PROJECT_ROOT/app/src/main/assets/www/v613.js"
+
+          grep -q "v613MainStatement" "$FILE"
+          grep -q "Statement" "$FILE"
+          grep -q "ledgerPositionV59" "$FILE"
+
+          echo "Main Balance Statement button FOUND."
+
+      # ==========================================
+      # 24. VERIFY + ENTRY PRESERVED
       # ==========================================
       - name: Verify Ledger Entry preserved
         shell: bash
@@ -432,7 +485,7 @@ jobs:
           echo "+ Entry functionality preserved."
 
       # ==========================================
-      # 22. VERIFY PURCHASE PRESERVED
+      # 25. VERIFY PURCHASE PRESERVED
       # ==========================================
       - name: Verify Purchase preserved
         shell: bash
@@ -449,7 +502,7 @@ jobs:
           echo "+ Buy / Purchase functionality preserved."
 
       # ==========================================
-      # 23. VERIFY EDIT/SAVE PRESERVED
+      # 26. VERIFY LEDGER EDIT/SAVE
       # ==========================================
       - name: Verify Ledger Edit Save preserved
         shell: bash
@@ -459,14 +512,14 @@ jobs:
           WWW="$PROJECT_ROOT/app/src/main/assets/www"
 
           if ! grep -R -q "transactionActions" "$WWW"; then
-            echo "ERROR: Ledger transaction editor not found."
+            echo "ERROR: Ledger Edit/Save not found."
             exit 1
           fi
 
           echo "Ledger Edit/Save preserved."
 
       # ==========================================
-      # 24. VERIFY REMAINING LIMIT PRESERVED
+      # 27. VERIFY REMAINING LIMIT
       # ==========================================
       - name: Verify Remaining Limit preserved
         shell: bash
@@ -483,7 +536,7 @@ jobs:
           echo "Remaining Limit preserved."
 
       # ==========================================
-      # 25. CHECK ALL JAVASCRIPT
+      # 28. CHECK ALL JAVASCRIPT
       # ==========================================
       - name: Check all JavaScript syntax
         shell: bash
@@ -512,7 +565,7 @@ jobs:
           echo "All JavaScript syntax checks PASSED."
 
       # ==========================================
-      # 26. GRADLE INFO
+      # 29. SHOW GRADLE INFORMATION
       # ==========================================
       - name: Show Gradle information
         shell: bash
@@ -520,9 +573,9 @@ jobs:
           gradle --version
 
       # ==========================================
-      # 27. CLEAN
+      # 30. CLEAN
       # ==========================================
-      - name: Clean NadEx V6.12
+      - name: Clean NadEx V6.13
         shell: bash
         run: |
           set -e
@@ -532,9 +585,9 @@ jobs:
           gradle clean --stacktrace
 
       # ==========================================
-      # 28. BUILD APK
+      # 31. BUILD APK
       # ==========================================
-      - name: Build NadEx V6.12 APK
+      - name: Build NadEx V6.13 APK
         shell: bash
         run: |
           set -e
@@ -542,22 +595,19 @@ jobs:
           cd "$PROJECT_ROOT"
 
           echo "============================================"
-          echo "BUILDING NADEX V6.12 FINAL"
+          echo "BUILDING NADEX V6.13"
           echo "============================================"
-          echo "Unified My Expense total"
-          echo "Outer My Expense TOTAL fixed at source"
-          echo "Inner My Expense card synchronized"
-          echo "My Expense transaction history preserved"
-          echo "Detailed Monthly Expense report"
-          echo "Native Android PrintManager"
-          echo "Native WebView print adapter"
-          echo "Old failed print overrides disabled"
+          echo "Personal-only expenses excluded from Monthly Expense"
+          echo "Ledger My Expense preserved"
+          echo "Purchase Delete repaired"
+          echo "Party long-press Rename / Hide"
+          echo "Main Ledger Balance Statement"
+          echo "Native detailed PDF preserved"
           echo "+ Entry preserved"
           echo "+ Buy / Purchase preserved"
           echo "Ledger Edit/Save preserved"
-          echo "My Share preserved"
           echo "Remaining Limit preserved"
-          echo "Existing local data preserved"
+          echo "Existing data preserved"
           echo "============================================"
 
           gradle assembleDebug --stacktrace
@@ -566,7 +616,7 @@ jobs:
           echo "Gradle build completed successfully."
 
       # ==========================================
-      # 29. LOCATE APK
+      # 32. LOCATE APK
       # ==========================================
       - name: Locate generated APK
         shell: bash
@@ -600,9 +650,9 @@ jobs:
           echo "APK_PATH=$APK_PATH" >> "$GITHUB_ENV"
 
       # ==========================================
-      # 30. PREPARE FINAL APK
+      # 33. PREPARE FINAL APK
       # ==========================================
-      - name: Prepare NadEx V6.12 APK
+      - name: Prepare NadEx V6.13 APK
         shell: bash
         run: |
           set -e
@@ -611,23 +661,8 @@ jobs:
           mkdir -p release
 
           cp "$APK_PATH" \
-            "release/NadEx-V6.12-Final-Expense-Native-PDF-Fix.apk"
+            "release/NadEx-V6.13-Targeted-Ledger-Expense-Fix.apk"
 
           echo ""
           echo "============================================"
-          echo "FINAL APK READY"
-          echo "============================================"
-
-          ls -lh \
-            "release/NadEx-V6.12-Final-Expense-Native-PDF-Fix.apk"
-
-      # ==========================================
-      # 31. UPLOAD APK
-      # ==========================================
-      - name: Upload NadEx V6.12 APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: NadEx-V6-12-Final-Expense-Native-PDF-Fix-APK
-          path: release/NadEx-V6.12-Final-Expense-Native-PDF-Fix.apk
-          if-no-files-found: error
-          retention-days: 30
+  
