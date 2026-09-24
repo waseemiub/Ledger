@@ -11,8 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # ============================================================
+      # 1. CHECKOUT
+      # ============================================================
+
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+
+      # ============================================================
+      # 2. JAVA
+      # ============================================================
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -20,30 +30,67 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+
+      # ============================================================
+      # 3. GRADLE
+      # ============================================================
+
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Verify V6.15 ZIP
+
+      # ============================================================
+      # 4. FIND THE V6.15 ZIP
+      # ============================================================
+
+      - name: Find V6.15 ZIP
         shell: bash
         run: |
           set -e
 
-          ZIP="NadEx_Android_V6_15_MINIMAL_FUNCTION_FIX.zip"
+          echo "Files in repository:"
+          ls -lah
+
+          ZIP="NadEx_Android_V6_15_MINIMAL_FUNCTION_FIX (1).zip"
 
           if [ ! -f "$ZIP" ]; then
-            echo "ERROR: $ZIP not found."
             echo ""
-            echo "Files currently in repository:"
-            ls -lah
+            echo "ERROR: V6.15 ZIP not found."
+            echo "Expected:"
+            echo "$ZIP"
             exit 1
           fi
 
+          echo ""
           echo "ZIP FOUND:"
           ls -lh "$ZIP"
 
-          unzip -t "$ZIP"
+          echo "ZIP_FILE=$ZIP" >> "$GITHUB_ENV"
+
+
+      # ============================================================
+      # 5. VERIFY ZIP
+      # ============================================================
+
+      - name: Verify ZIP Integrity
+        shell: bash
+        run: |
+          set -e
+
+          echo "Checking:"
+          echo "$ZIP_FILE"
+
+          unzip -t "$ZIP_FILE"
+
+          echo ""
+          echo "ZIP integrity OK."
+
+
+      # ============================================================
+      # 6. EXTRACT PROJECT
+      # ============================================================
 
       - name: Extract Android Project
         shell: bash
@@ -53,9 +100,20 @@ jobs:
           rm -rf NadExBuild
           mkdir -p NadExBuild
 
-          unzip -q \
-            NadEx_Android_V6_15_MINIMAL_FUNCTION_FIX.zip \
-            -d NadExBuild
+          unzip -q "$ZIP_FILE" -d NadExBuild
+
+          echo ""
+          echo "ZIP extracted."
+
+
+      # ============================================================
+      # 7. LOCATE ANDROID PROJECT
+      # ============================================================
+
+      - name: Locate Android Project
+        shell: bash
+        run: |
+          set -e
 
           SETTINGS_FILE=$(find NadExBuild \
             -type f \
@@ -64,6 +122,9 @@ jobs:
 
           if [ -z "$SETTINGS_FILE" ]; then
             echo "ERROR: settings.gradle.kts not found."
+            echo ""
+            echo "Extracted files:"
+            find NadExBuild -maxdepth 4 -type f | sort
             exit 1
           fi
 
@@ -71,29 +132,45 @@ jobs:
 
           echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
 
-          echo "Android project:"
+          echo ""
+          echo "ANDROID PROJECT FOUND:"
           echo "$PROJECT_ROOT"
 
-      - name: Verify NadEx Version
+
+      # ============================================================
+      # 8. VERIFY VERSION
+      # ============================================================
+
+      - name: Verify NadEx V6.15
         shell: bash
         run: |
           set -e
 
-          FILE="$PROJECT_ROOT/app/build.gradle.kts"
+          GRADLE_FILE="$PROJECT_ROOT/app/build.gradle.kts"
 
-          if [ ! -f "$FILE" ]; then
+          if [ ! -f "$GRADLE_FILE" ]; then
             echo "ERROR: app/build.gradle.kts not found."
             exit 1
           fi
 
-          grep -q 'applicationId = "ae.transactor.app"' "$FILE"
-          grep -q 'versionCode = 75' "$FILE"
-          grep -q 'versionName = "6.15"' "$FILE"
+          grep -q 'applicationId = "ae.transactor.app"' "$GRADLE_FILE"
+          grep -q 'versionCode = 75' "$GRADLE_FILE"
+          grep -q 'versionName = "6.15"' "$GRADLE_FILE"
 
-          echo "NadEx V6.15 verified."
-          echo "versionCode 75 verified."
+          echo ""
+          echo "======================================"
+          echo "NADEX V6.15 VERIFIED"
+          echo "Application: ae.transactor.app"
+          echo "Version: 6.15"
+          echo "Version Code: 75"
+          echo "======================================"
 
-      - name: Verify V6.15 Patch
+
+      # ============================================================
+      # 9. VERIFY V6.15 SCRIPT
+      # ============================================================
+
+      - name: Verify V6.15 Functional Patch
         shell: bash
         run: |
           set -e
@@ -106,11 +183,19 @@ jobs:
             exit 1
           fi
 
-          grep -q 'src="v615.js"' "$INDEX"
+          if ! grep -q 'src="v615.js"' "$INDEX"; then
+            echo "ERROR: v615.js is not loaded by index.html."
+            exit 1
+          fi
 
-          echo "V6.15 patch verified."
+          echo "V6.15 functional patch verified."
 
-      - name: Check JavaScript
+
+      # ============================================================
+      # 10. JAVASCRIPT CHECK
+      # ============================================================
+
+      - name: Check JavaScript Syntax
         shell: bash
         run: |
           set -e
@@ -125,7 +210,13 @@ jobs:
             fi
           done
 
-          echo "JavaScript checks passed."
+          echo ""
+          echo "All JavaScript syntax checks passed."
+
+
+      # ============================================================
+      # 11. CLEAN
+      # ============================================================
 
       - name: Clean Android Project
         shell: bash
@@ -134,7 +225,14 @@ jobs:
 
           cd "$PROJECT_ROOT"
 
+          echo "Cleaning project..."
+
           gradle clean --stacktrace
+
+
+      # ============================================================
+      # 12. BUILD APK
+      # ============================================================
 
       - name: Build NadEx V6.15 APK
         shell: bash
@@ -143,16 +241,27 @@ jobs:
 
           cd "$PROJECT_ROOT"
 
+          echo ""
           echo "======================================"
-          echo "BUILDING NADEX V6.15"
+          echo "BUILDING NADEX V6.15 APK"
           echo "======================================"
 
           gradle assembleDebug --stacktrace
 
-      - name: Find and Prepare APK
+          echo ""
+          echo "Gradle build completed."
+
+
+      # ============================================================
+      # 13. LOCATE APK
+      # ============================================================
+
+      - name: Locate Generated APK
         shell: bash
         run: |
           set -e
+
+          echo "Searching for APK..."
 
           APK_PATH=$(find "$PROJECT_ROOT/app/build/outputs/apk" \
             -type f \
@@ -160,33 +269,66 @@ jobs:
             | head -1)
 
           if [ -z "$APK_PATH" ]; then
+
+            echo ""
             echo "ERROR: APK was not generated."
             echo ""
-            echo "Build output:"
-            find "$PROJECT_ROOT/app/build" -type f | sort || true
+            echo "Build output files:"
+
+            find "$PROJECT_ROOT/app/build" \
+              -type f \
+              | sort || true
+
             exit 1
           fi
 
-          echo "GENERATED APK:"
+          echo ""
+          echo "APK FOUND:"
           echo "$APK_PATH"
 
           ls -lh "$APK_PATH"
 
+          echo "APK_PATH=$APK_PATH" >> "$GITHUB_ENV"
+
+
+      # ============================================================
+      # 14. CREATE FINAL APK
+      # ============================================================
+
+      - name: Prepare Final NadEx APK
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf final-apk
           mkdir -p final-apk
 
           cp "$APK_PATH" \
             "final-apk/NadEx-V6.15.apk"
 
+          if [ ! -f "final-apk/NadEx-V6.15.apk" ]; then
+            echo "ERROR: Final APK was not copied."
+            exit 1
+          fi
+
           if [ ! -s "final-apk/NadEx-V6.15.apk" ]; then
-            echo "ERROR: Final APK is missing or empty."
+            echo "ERROR: Final APK is empty."
             exit 1
           fi
 
           echo ""
-          echo "FINAL APK READY:"
-          ls -lh final-apk/NadEx-V6.15.apk
+          echo "======================================"
+          echo "FINAL APK CREATED"
+          echo "======================================"
 
-      - name: Upload APK as Actions Backup
+          ls -lh "final-apk/NadEx-V6.15.apk"
+
+
+      # ============================================================
+      # 15. ACTIONS ARTIFACT BACKUP
+      # ============================================================
+
+      - name: Upload APK Backup
         uses: actions/upload-artifact@v4
         with:
           name: NadEx-V6.15-APK
@@ -195,7 +337,12 @@ jobs:
           retention-days: 30
           compression-level: 0
 
-      - name: Create or Update GitHub Release
+
+      # ============================================================
+      # 16. CREATE / UPDATE GITHUB RELEASE
+      # ============================================================
+
+      - name: Publish APK to GitHub Release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -205,9 +352,13 @@ jobs:
           TAG="v6.15"
           APK="final-apk/NadEx-V6.15.apk"
 
-          if gh release view "$TAG" >/dev/null 2>&1; then
+          echo ""
+          echo "Publishing APK to GitHub Release..."
 
-            echo "Existing V6.15 release found."
+          if gh release view "$TAG" >/dev/null 2>&1
+          then
+
+            echo "V6.15 release already exists."
             echo "Replacing APK asset..."
 
             gh release upload "$TAG" \
@@ -216,7 +367,7 @@ jobs:
 
           else
 
-            echo "Creating NadEx V6.15 release..."
+            echo "Creating V6.15 release..."
 
             gh release create "$TAG" \
               "$APK" \
@@ -224,6 +375,11 @@ jobs:
               --notes "NadEx V6.15 - Minimal Function Fix"
 
           fi
+
+
+      # ============================================================
+      # 17. VERIFY RELEASE
+      # ============================================================
 
       - name: Verify Published APK
         shell: bash
@@ -234,15 +390,22 @@ jobs:
 
           echo ""
           echo "======================================"
-          echo "NADEX V6.15 BUILD COMPLETED"
+          echo "NADEX V6.15 BUILD SUCCESSFUL"
           echo "======================================"
 
           gh release view v6.15
 
           echo ""
-          echo "APK FILE:"
+          echo "APK:"
           echo "NadEx-V6.15.apk"
+
           echo ""
-          echo "DOWNLOAD LOCATION:"
-          echo "Repository > Releases > NadEx V6.15 > Assets"
+          echo "DOWNLOAD FROM:"
+          echo "Repository"
+          echo "→ Releases"
+          echo "→ NadEx V6.15"
+          echo "→ Assets"
+          echo "→ NadEx-V6.15.apk"
+
+          echo ""
           echo "======================================"
