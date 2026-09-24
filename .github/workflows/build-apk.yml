@@ -1,4 +1,4 @@
-name: Build and Release NadEx V6.16 APK
+name: Build and Release NadEx V6.17 APK
 
 on:
   workflow_dispatch:
@@ -25,7 +25,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Find V6.16 ZIP
+      - name: Find V6.17 ZIP
         shell: bash
         run: |
           set -e
@@ -34,30 +34,31 @@ jobs:
           ls -lah
 
           ZIP=$(find . -maxdepth 1 -type f \
-            -name "NadEx_Android_V6_16_RECOVERY_BUILD*.zip" \
+            -name "NadEx_Android_V6_17_DIRECT_SOURCE_FIX*.zip" \
             | head -1)
 
           if [ -z "$ZIP" ]; then
-            echo "ERROR: V6.16 ZIP not found."
+            echo "ERROR: NadEx V6.17 ZIP not found."
             exit 1
           fi
 
           ZIP="${ZIP#./}"
 
+          echo ""
           echo "ZIP FOUND:"
           echo "$ZIP"
           ls -lh "$ZIP"
 
           echo "ZIP_FILE=$ZIP" >> "$GITHUB_ENV"
 
-      - name: Verify ZIP
+      - name: Verify ZIP Integrity
         shell: bash
         run: |
           set -e
 
           unzip -t "$ZIP_FILE"
 
-          echo "ZIP integrity OK."
+          echo "ZIP integrity passed."
 
       - name: Extract Android Project
         shell: bash
@@ -75,7 +76,7 @@ jobs:
             | head -1)
 
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERROR: settings.gradle.kts not found."
+            echo "ERROR: Android project not found."
             find NadExBuild -maxdepth 4 -type f | sort
             exit 1
           fi
@@ -84,10 +85,11 @@ jobs:
 
           echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
 
+          echo ""
           echo "PROJECT ROOT:"
           echo "$PROJECT_ROOT"
 
-      - name: Verify NadEx V6.16
+      - name: Verify NadEx V6.17
         shell: bash
         run: |
           set -e
@@ -95,33 +97,44 @@ jobs:
           FILE="$PROJECT_ROOT/app/build.gradle.kts"
 
           grep -q 'applicationId = "ae.transactor.app"' "$FILE"
-          grep -q 'versionCode = 76' "$FILE"
-          grep -q 'versionName = "6.16"' "$FILE"
+          grep -q 'versionCode = 77' "$FILE"
+          grep -q 'versionName = "6.17"' "$FILE"
 
-          echo "NadEx V6.16 verified."
-          echo "versionCode 76 verified."
+          echo "NadEx V6.17 verified."
+          echo "versionCode 77 verified."
 
-      - name: Verify V6.16 Recovery Fix
+      - name: Verify V6.17 Fixes
         shell: bash
         run: |
           set -e
 
           WWW="$PROJECT_ROOT/app/src/main/assets/www"
 
-          test -f "$WWW/v616.js"
+          test -f "$WWW/v617.js"
 
-          grep -q 'src="v616.js"' "$WWW/index.html"
+          grep -q 'src="v617.js"' \
+            "$WWW/index.html"
+
+          grep -q 'id="partyManage"' \
+            "$WWW/index.html"
+
+          grep -q 'class="outline-btn"' \
+            "$WWW/index.html"
 
           grep -q 'window.transactionActions(el.dataset.txid)' \
             "$WWW/app.js"
 
-          grep -q 'ledgerFullBalanceV59' \
-            "$WWW/v616.js"
+          grep -q 'function confirmDelete63' \
+            "$WWW/v63.js"
 
-          grep -q 'Edit / Remove Party' \
-            "$WWW/v616.js"
+          grep -q 'Delete storage verification failed' \
+            "$WWW/v63.js"
 
-          echo "V6.16 fixes verified."
+          grep -q "const b=E('download')" \
+            "$WWW/v617.js"
+
+          echo ""
+          echo "V6.17 source fixes verified."
 
       - name: Check JavaScript Syntax
         shell: bash
@@ -138,6 +151,7 @@ jobs:
             fi
           done
 
+          echo ""
           echo "All JavaScript syntax checks passed."
 
       - name: Clean Android Project
@@ -149,15 +163,16 @@ jobs:
 
           gradle clean --stacktrace
 
-      - name: Build NadEx V6.16 APK
+      - name: Build NadEx V6.17 APK
         shell: bash
         run: |
           set -e
 
           cd "$PROJECT_ROOT"
 
+          echo ""
           echo "======================================"
-          echo "BUILDING NADEX V6.16"
+          echo "BUILDING NADEX V6.17"
           echo "======================================"
 
           gradle assembleDebug --stacktrace
@@ -174,10 +189,12 @@ jobs:
 
           if [ -z "$APK_PATH" ]; then
             echo "ERROR: APK was not generated."
+            echo ""
             find "$PROJECT_ROOT/app/build" -type f | sort || true
             exit 1
           fi
 
+          echo ""
           echo "APK FOUND:"
           echo "$APK_PATH"
 
@@ -194,21 +211,22 @@ jobs:
           mkdir -p final-apk
 
           cp "$APK_PATH" \
-            "final-apk/NadEx-V6.16.apk"
+            "final-apk/NadEx-V6.17.apk"
 
-          if [ ! -s "final-apk/NadEx-V6.16.apk" ]; then
-            echo "ERROR: Final APK is missing or empty."
+          if [ ! -s "final-apk/NadEx-V6.17.apk" ]; then
+            echo "ERROR: Final APK missing or empty."
             exit 1
           fi
 
+          echo ""
           echo "FINAL APK:"
-          ls -lh final-apk/NadEx-V6.16.apk
+          ls -lh final-apk/NadEx-V6.17.apk
 
       - name: Upload APK Backup
         uses: actions/upload-artifact@v4
         with:
-          name: NadEx-V6.16-APK
-          path: final-apk/NadEx-V6.16.apk
+          name: NadEx-V6.17-APK
+          path: final-apk/NadEx-V6.17.apk
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
@@ -220,31 +238,27 @@ jobs:
         run: |
           set -e
 
-          TAG="v6.16"
-          APK="final-apk/NadEx-V6.16.apk"
+          TAG="v6.17"
+          APK="final-apk/NadEx-V6.17.apk"
 
           if gh release view "$TAG" >/dev/null 2>&1
           then
-
-            echo "Existing V6.16 release found."
+            echo "Existing V6.17 release found."
             echo "Replacing APK..."
 
             gh release upload "$TAG" \
               "$APK" \
               --clobber
-
           else
-
-            echo "Creating V6.16 release..."
+            echo "Creating V6.17 release..."
 
             gh release create "$TAG" \
               "$APK" \
-              --title "NadEx V6.16" \
-              --notes "NadEx V6.16 Recovery Build"
-
+              --title "NadEx V6.17" \
+              --notes "NadEx V6.17 Direct Source Fix"
           fi
 
-      - name: Verify Release
+      - name: Verify Published APK
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -253,15 +267,19 @@ jobs:
 
           echo ""
           echo "======================================"
-          echo "NADEX V6.16 BUILD SUCCESSFUL"
+          echo "NADEX V6.17 BUILD SUCCESSFUL"
           echo "======================================"
 
-          gh release view v6.16
+          gh release view v6.17
 
           echo ""
           echo "APK:"
-          echo "NadEx-V6.16.apk"
+          echo "NadEx-V6.17.apk"
+
           echo ""
           echo "DOWNLOAD:"
-          echo "Repository > Releases > NadEx V6.16 > Assets"
+          echo "Repository > Releases"
+          echo "> NadEx V6.17"
+          echo "> Assets"
+          echo "> NadEx-V6.17.apk"
           echo "======================================"
